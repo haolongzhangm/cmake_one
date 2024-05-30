@@ -211,6 +211,23 @@ class Build:
                 self.toolchains_config = '-DCMAKE_TOOLCHAIN_FILE={} -DANDROID_ABI=\\"{}\\" -DANDROID_NATIVE_API_LEVEL={}'.format(
                     android_toolchains, an[0], an[1]
                 )
+            elif args.cross_build_target_os == "OHOS":
+                assert (
+                    "OHOS_NDK_ROOT" in os.environ
+                ), "can not find OHOS_NDK_ROOT env, https://gitee.com/openharmony/build/wikis/NDK/HOW%20TO%20USE%20NDK%20(linux), then export it path to OHOS_NDK_ROOT"
+                ohos_ndk_path = os.environ.get("OHOS_NDK_ROOT")
+                ohos_toolchains = os.path.join(
+                    ohos_ndk_path, "build/cmake/ohos.toolchain.cmake"
+                )
+                assert os.path.isfile(
+                    ohos_toolchains
+                ), "error config env: NDK_ROOT: {}, can not find ohos toolchains: {}".format(
+                    ohos_ndk_path, ohos_toolchains
+                )
+                logging.debug("use ohos NDK toolchains: {}".format(ohos_toolchains))
+                self.toolchains_config = "-DCMAKE_TOOLCHAIN_FILE={} -DOHOS_STL=c++_static -DOHOS_ARCH=arm64-v8a -DOHOS_PLATFORM=OHOS".format(
+                    ohos_toolchains
+                )
             elif args.cross_build_target_os == "IOS":
                 # cross-build for IOS no need strip target
                 self.NINJA_INSTALL_STR = "install"
