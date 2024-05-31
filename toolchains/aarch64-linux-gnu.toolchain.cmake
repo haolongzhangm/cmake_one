@@ -3,7 +3,7 @@ set(CMAKE_SYSTEM_PROCESSOR aarch64)
 
 # now we support cross build for aarch64-linux by clang
 # host always need install some base package, like clang, llvm, gcc, g++
-# and install sysroot package: libgcc-11-dev-arm64-cross and libstdc++-11-dev-arm64-cross gcc-aarch64-linux-gnu
+# and install sysroot package: libgcc-11-dev-arm64-cross and libstdc++-11-dev-arm64-cross gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 # the version of 11 is depend on the version of gcc/g++ in host
 set(CMAKE_C_COMPILER clang)
 set(CMAKE_CXX_COMPILER clang++)
