@@ -385,6 +385,9 @@ class Build:
         if args.cmake_options:
             cmake_config = cmake_config + " {}".format(args.cmake_options)
 
+        # set CMAKE_EXPORT_COMPILE_COMMANDS ON
+        cmake_config = cmake_config + " -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+
         # handle host build 32bit
         host_32bit_args = {"Windows": "", "Linux": "-m32", "Darwin": "-m32"}
         assert (
