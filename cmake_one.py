@@ -35,16 +35,16 @@ class Build:
 
     def detect_build_env(self):
         self.BUILD_ENV = platform.system()
-        assert (
-            self.BUILD_ENV in self.SUPPORT_BUILD_ENV
-        ), "now only support build env at: {}".format(self.SUPPORT_BUILD_ENV)
+        assert (self.BUILD_ENV in self.SUPPORT_BUILD_ENV
+                ), f"now only support build env at: {self.SUPPORT_BUILD_ENV}"
         if self.BUILD_ENV == "Windows":
             self.NINJA_BASE = "Ninja"
-        logging.debug("build at host env: {}".format(self.BUILD_ENV))
+        logging.debug(f"build at host env: {self.BUILD_ENV}")
 
     def build(self):
         self.detect_build_env()
-        parser = argparse.ArgumentParser(description="build tools for cmake project")
+        parser = argparse.ArgumentParser(
+            description="build tools for cmake project")
         parser.add_argument(
             "--build_type",
             type=str,
@@ -66,7 +66,8 @@ class Build:
             "--repo_dir",
             type=str,
             default=os.path.join(os.path.dirname(__file__), "test_repo"),
-            help="repo dir, default is os.path.join(os.path.dirname(__file__), 'test_repo'), you can specify it for build other repo",
+            help=
+            "repo dir, default is os.path.join(os.path.dirname(__file__), 'test_repo'), you can specify it for build other repo",
         )
         parser.add_argument(
             "--build_dir",
@@ -85,36 +86,35 @@ class Build:
             "--cmake_options",
             type=str,
             default=None,
-            help="cmake options, used to config repo self define options, like -DENABLE_ASAN=ON, as this build tools is for all cmake project, so we can not config all options, so provide this option for user to config self define options",
+            help=
+            "cmake options, used to config repo self define options, like -DENABLE_ASAN=ON, as this build tools is for all cmake project, so we can not config all options, so provide this option for user to config self define options",
         )
 
-        sub_parser = parser.add_subparsers(
-            dest="sub_command", help="sub command for build", required=True
-        )
+        sub_parser = parser.add_subparsers(dest="sub_command",
+                                           help="sub command for build",
+                                           required=True)
 
         cross_build_p = sub_parser.add_parser(
-            "cross_build", help="cross build for other arch and os"
-        )
+            "cross_build", help="cross build for other arch and os")
 
         cross_build_p.add_argument(
             "--cross_build_target_os",
             type=str,
             default="ANDROID",
             choices=self.cross_build_configs.keys(),
-            help="cross build target os, now support: {}".format(
-                self.cross_build_configs.keys()
-            ),
+            help=
+            f"cross build target os, now support: {self.cross_build_configs.keys()}",
         )
         cross_build_p.add_argument(
             "--cross_build_target_arch",
             type=str,
             default="aarch64",
-            help="cross build target arch, now support: {}".format(
-                self.cross_build_configs
-            ),
+            help=
+            f"cross build target arch, now support: {self.cross_build_configs}",
         )
 
-        host_build_p = sub_parser.add_parser("host_build", help="do host build,")
+        host_build_p = sub_parser.add_parser("host_build",
+                                             help="do host build,")
         host_build_p.add_argument(
             "--build_for_32bit",
             action="store_true",
@@ -127,16 +127,12 @@ class Build:
         args.repo_dir = os.path.abspath(args.repo_dir)
         assert os.path.isdir(
             args.repo_dir
-        ), "error config --repo_dir {} is not a valid dir: is not dir".format(
-            args.repo_dir
-        )
+        ), f"error config --repo_dir {args.repo_dir} is not a valid dir: is not dir"
 
         # check args.repo_dir should have CMakeLists.txt
         assert os.path.isfile(
             os.path.join(args.repo_dir, "CMakeLists.txt")
-        ), "error config --repo_dir {} is not a valid dir: can not find CMakeLists.txt".format(
-            args.repo_dir
-        )
+        ), f"error config --repo_dir {args.repo_dir} is not a valid dir: can not find CMakeLists.txt"
 
         # config build_dir and convert to abs path
         if args.build_dir is None:
@@ -149,19 +145,17 @@ class Build:
 
         # remove old build dir if need
         if args.remove_old_build:
-            logging.debug("remove old build dir: {}".format(args.build_dir))
-            subprocess.check_call("rm -rf {}".format(args.build_dir), shell=True)
-            logging.debug("remove old install dir: {} done".format(args.install_dir))
-            subprocess.check_call("rm -rf {}".format(args.install_dir), shell=True)
-        logging.debug("create new build dir: {}".format(args.build_dir))
-        subprocess.check_call("mkdir -p {}".format(args.build_dir), shell=True)
-        logging.debug("create new install dir: {}".format(args.install_dir))
-        subprocess.check_call("mkdir -p {}".format(args.install_dir), shell=True)
+            logging.debug(f"remove old build dir: {args.build_dir}")
+            subprocess.check_call(f"rm -rf {args.build_dir}", shell=True)
+            logging.debug(f"remove old install dir: {args.install_dir} done")
+            subprocess.check_call(f"rm -rf {args.install_dir}", shell=True)
+        logging.debug(f"create new build dir: {args.build_dir}")
+        subprocess.check_call(f"mkdir -p {args.build_dir}", shell=True)
+        logging.debug(f"create new install dir: {args.install_dir}")
+        subprocess.check_call(f"mkdir -p {args.install_dir}", shell=True)
 
         logging.debug(
-            "build dir info: repo_dir: {} build_dir: {} install_dir: {}".format(
-                args.repo_dir, args.build_dir, args.install_dir
-            )
+            f"build dir info: repo_dir: {args.repo_dir} build_dir: {args.build_dir} install_dir: {args.install_dir}"
         )
 
         # now cd to build_dir
@@ -172,30 +166,22 @@ class Build:
             logging.debug("cross build now")
             assert (
                 args.cross_build_target_os in self.cross_build_configs.keys()
-            ), "error config: not support --cross_build_target_os {} now support one of: {}".format(
-                args.cross_build_target_os, self.cross_build_configs.keys()
-            )
+            ), f"error config: not support --cross_build_target_os {args.cross_build_target_os} now support one of: {self.cross_build_configs.keys()}"
             assert (
-                args.cross_build_target_arch
-                in self.cross_build_configs[args.cross_build_target_os]
-            ), "error config: not support --cross_build_target_arch {} now support one of: {}".format(
-                args.cross_build_target_arch,
-                self.cross_build_configs[args.cross_build_target_os],
-            )
+                args.cross_build_target_arch in self.cross_build_configs[
+                    args.cross_build_target_os]
+            ), f"error config: not support --cross_build_target_arch {args.cross_build_target_arch} now support one of: {self.cross_build_configs[args.cross_build_target_os]}"
             if args.cross_build_target_os == "ANDROID":
                 assert (
                     "NDK_ROOT" in os.environ
                 ), "can not find NDK_ROOT env, please download from https://developer.android.com/ndk/downloads then export it path to NDK_ROOT"
                 ndk_path = os.environ.get("NDK_ROOT")
                 android_toolchains = os.path.join(
-                    ndk_path, "build/cmake/android.toolchain.cmake"
-                )
+                    ndk_path, "build/cmake/android.toolchain.cmake")
                 assert os.path.isfile(
                     android_toolchains
-                ), "error config env: NDK_ROOT: {}, can not find android toolchains: {}".format(
-                    ndk_path, android_toolchains
-                )
-                logging.debug("use NDK toolchains: {}".format(android_toolchains))
+                ), f"error config env: NDK_ROOT: {ndk_path}, can not find android toolchains: {android_toolchains}"
+                logging.debug(f"use NDK toolchains: {android_toolchains}")
                 ABI_NATIVE_LEVEL_MAPS = {
                     "x86_64": ["x86_64", 21],
                     "i386": ["x86", 16],
@@ -204,47 +190,34 @@ class Build:
                 }
                 assert (
                     args.cross_build_target_arch in ABI_NATIVE_LEVEL_MAPS
-                ), "codeissue happened, please fix add {} to ABI_NATIVE_LEVEL_MAPS".format(
-                    args.cross_build_target_arch
-                )
+                ), f"codeissue happened, please fix add {args.cross_build_target_arch} to ABI_NATIVE_LEVEL_MAPS"
                 an = ABI_NATIVE_LEVEL_MAPS[args.cross_build_target_arch]
-                self.toolchains_config = '-DCMAKE_TOOLCHAIN_FILE={} -DANDROID_ABI=\\"{}\\" -DANDROID_NATIVE_API_LEVEL={}'.format(
-                    android_toolchains, an[0], an[1]
-                )
+                self.toolchains_config = f'-DCMAKE_TOOLCHAIN_FILE={android_toolchains} -DANDROID_ABI="{an[0]}" -DANDROID_NATIVE_API_LEVEL={an[1]}'
             elif args.cross_build_target_os == "OHOS":
                 assert (
                     "OHOS_NDK_ROOT" in os.environ
                 ), "can not find OHOS_NDK_ROOT env, https://gitee.com/openharmony/build/wikis/NDK/HOW%20TO%20USE%20NDK%20(linux), then export it path to OHOS_NDK_ROOT"
                 ohos_ndk_path = os.environ.get("OHOS_NDK_ROOT")
                 ohos_toolchains = os.path.join(
-                    ohos_ndk_path, "build/cmake/ohos.toolchain.cmake"
-                )
+                    ohos_ndk_path, "build/cmake/ohos.toolchain.cmake")
                 assert os.path.isfile(
                     ohos_toolchains
-                ), "error config env: NDK_ROOT: {}, can not find ohos toolchains: {}".format(
-                    ohos_ndk_path, ohos_toolchains
-                )
-                logging.debug("use ohos NDK toolchains: {}".format(ohos_toolchains))
-                self.toolchains_config = "-DCMAKE_TOOLCHAIN_FILE={} -DOHOS_STL=c++_static -DOHOS_ARCH=arm64-v8a -DOHOS_PLATFORM=OHOS".format(
-                    ohos_toolchains
-                )
+                ), f"error config env: OHOS_NDK_ROOT: {ohos_ndk_path}, can not find ohos toolchains: {ohos_toolchains}"
+                logging.debug(f"use ohos NDK toolchains: {ohos_toolchains}")
+                self.toolchains_config = f"-DCMAKE_TOOLCHAIN_FILE={ohos_toolchains} -DOHOS_STL=c++_static -DOHOS_ARCH=arm64-v8a -DOHOS_PLATFORM=OHOS"
             elif args.cross_build_target_os == "IOS":
                 # cross-build for IOS no need strip target
                 self.NINJA_INSTALL_STR = "install"
                 assert (
                     self.BUILD_ENV == "Darwin"
-                ), "error: do not support build for IOS at: {}, only support at MACOS host".format(
-                    self.BUILD_ENV
-                )
+                ), f"error: do not support build for IOS at: {self.BUILD_ENV}, only support at MACOS host"
                 IOS_ARCH_MAPS = {
                     "aarch64": "arm64",
                     "armv7-a": "armv7",
                 }
                 assert (
                     args.cross_build_target_arch in IOS_ARCH_MAPS
-                ), "codeissue happened, do not support arch {} for IOS".format(
-                    args.cross_build_target_arch
-                )
+                ), f"codeissue happened, do not support arch {args.cross_build_target_arch} for IOS"
                 """to config this, if u want to build other, like simulator or for iwatch,
                 please do manually modify
                 OS_PLATFORM=("OS" "OS64" "SIMULATOR" "SIMULATOR64" "TVOS" "WATCHOS" "SIMULATOR_TVOS")
@@ -257,20 +230,11 @@ class Build:
                 )
                 assert os.path.isfile(
                     ios_toolchains
-                ), "code issue happened, can not find ios toolchains: {}".format(
-                    ios_toolchains
-                )
+                ), f"code issue happened, can not find ios toolchains: {ios_toolchains}"
                 OS_PLATFORM = "OS"
                 XCODE_IOS_PLATFORM = "iphoneos"
 
-                self.toolchains_config = "-DCMAKE_TOOLCHAIN_FILE={} -DIOS_TOOLCHAIN_ROOT={} -DOS_PLATFORM={} -DXCODE_IOS_PLATFORM={} -DIOS_ARCH={} -DCMAKE_ASM_COMPILER={} -DCMAKE_MAKE_PROGRAM=ninja".format(
-                    ios_toolchains,
-                    ios_toolchains,
-                    OS_PLATFORM,
-                    XCODE_IOS_PLATFORM,
-                    IOS_ARCH_MAPS[args.cross_build_target_arch],
-                    "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang",
-                )
+                self.toolchains_config = f"-DCMAKE_TOOLCHAIN_FILE={ios_toolchains} -DIOS_TOOLCHAIN_ROOT={ios_toolchains} -DOS_PLATFORM={OS_PLATFORM} -DXCODE_IOS_PLATFORM={XCODE_IOS_PLATFORM} -DIOS_ARCH={IOS_ARCH_MAPS[args.cross_build_target_arch]} -DCMAKE_ASM_COMPILER=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -DCMAKE_MAKE_PROGRAM=ninja"
             elif args.cross_build_target_os == "LINUX":
                 rv64gcv0p7_toolchains = os.path.join(
                     os.path.dirname(os.path.abspath(__file__)),
@@ -278,63 +242,48 @@ class Build:
                 )
                 assert os.path.isfile(
                     rv64gcv0p7_toolchains
-                ), "code issue happened, can not find rv64gcv0p7 toolchains: {}".format(
-                    rv64gcv0p7_toolchains
-                )
+                ), f"code issue happened, can not find rv64gcv0p7 toolchains: {rv64gcv0p7_toolchains}"
                 rv64norvv_toolchains = os.path.join(
                     os.path.dirname(os.path.abspath(__file__)),
                     "toolchains/riscv64-linux-gnu.toolchain.cmake",
                 )
                 assert os.path.isfile(
                     rv64norvv_toolchains
-                ), "code issue happened, can not find rv64norvv toolchains: {}".format(
-                    rv64norvv_toolchains
-                )
+                ), "fcode issue happened, can not find rv64norvv toolchains: {rv64norvv_toolchains}"
                 aarch64_toolchains = os.path.join(
                     os.path.dirname(os.path.abspath(__file__)),
                     "toolchains/aarch64-linux-gnu.toolchain.cmake",
                 )
                 assert os.path.isfile(
                     aarch64_toolchains
-                ), "code issue happened, can not find aarch64 toolchains: {}".format(
-                    aarch64_toolchains
-                )
+                ), f"code issue happened, can not find aarch64 toolchains: {aarch64_toolchains}"
                 armv7a_toolchains = os.path.join(
                     os.path.dirname(os.path.abspath(__file__)),
                     "toolchains/arm-linux-gnueabihf.toolchain.cmake",
                 )
                 assert os.path.isfile(
                     armv7a_toolchains
-                ), "code issue happened, can not find armv7a toolchains: {}".format(
-                    armv7a_toolchains
-                )
+                ), f"code issue happened, can not find armv7a toolchains: {armv7a_toolchains}"
 
                 logging.debug(
-                    "config for cross build LINUX-{}".format(
-                        args.cross_build_target_arch
-                    )
+                    f"config for cross build LINUX-{args.cross_build_target_arch}"
                 )
                 toolchains_maps = {
-                    "aarch64": "-DCMAKE_TOOLCHAIN_FILE={}".format(aarch64_toolchains),
-                    "armv7-a": "-DCMAKE_TOOLCHAIN_FILE={}".format(armv7a_toolchains),
-                    "rv64gcv0p7": "-DCMAKE_TOOLCHAIN_FILE={}".format(
-                        rv64gcv0p7_toolchains
-                    ),
-                    "rv64norvv": "-DCMAKE_TOOLCHAIN_FILE={}".format(
-                        rv64norvv_toolchains
-                    ),
+                    "aarch64": f"-DCMAKE_TOOLCHAIN_FILE={aarch64_toolchains}",
+                    "armv7-a": f"-DCMAKE_TOOLCHAIN_FILE={armv7a_toolchains}",
+                    "rv64gcv0p7":
+                    f"-DCMAKE_TOOLCHAIN_FILE={rv64gcv0p7_toolchains}",
+                    "rv64norvv":
+                    f"-DCMAKE_TOOLCHAIN_FILE={rv64norvv_toolchains}",
                 }
                 assert (
                     args.cross_build_target_arch in toolchains_maps
-                ), "code issue happened, please add {} to toolchains_maps if support".format(
-                    args.cross_build_target_arch
-                )
-                self.toolchains_config = toolchains_maps[args.cross_build_target_arch]
+                ), f"code issue happened, please add {args.cross_build_target_arch} to toolchains_maps if support"
+                self.toolchains_config = toolchains_maps[
+                    args.cross_build_target_arch]
             else:
                 logging.error(
-                    "code issue happened for: {} please FIXME!!!".format(
-                        args.cross_build_target_os
-                    )
+                    f"code issue happened for: {args.cross_build_target_os} please FIXME!!!"
                 )
                 code_not_imp()
 
@@ -354,36 +303,29 @@ class Build:
             elif self.BUILD_ENV == "Linux":
                 logging.debug("host build for Linux")
                 self.toolchains_config = (
-                    "-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
-                )
+                    "-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++")
             elif self.BUILD_ENV == "Darwin":
                 self.toolchains_config = (
-                    "-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
-                )
+                    "-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++")
                 logging.debug("host build for MACOS")
                 self.toolchains_config = (
-                    "-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
-                )
+                    "-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++")
             else:
                 logging.error(
-                    "code issue happened for: {} please FIXME!!!".format(self.BUILD_ENV)
+                    f"code issue happened for: {self.BUILD_ENV} please FIXME!!!"
                 )
                 code_not_imp()
         else:
             logging.error(
-                "code issue happened for: {} please FIXME!!!".format(args.sub_command)
-            )
+                f"code issue happened for: {args.sub_command} please FIXME!!!")
             code_not_imp()
 
         if args.build_with_ninja_verbose:
             self.NINJA_VERBOSE = "-v"
 
-        cmake_config = 'cmake -G Ninja -H\\"{}\\" -B\\"{}\\" {} -DCMAKE_INSTALL_PREFIX=\\"{}\\"'.format(
-            args.repo_dir, args.build_dir, self.toolchains_config, args.install_dir
-        )
-        cmake_config = cmake_config + " -DCMAKE_BUILD_TYPE={}".format(args.build_type)
+        cmake_config = f'cmake -G Ninja -H"{args.repo_dir}" -B"{args.build_dir}" {self.toolchains_config} -DCMAKE_INSTALL_PREFIX="{args.install_dir}" -DCMAKE_BUILD_TYPE={args.build_type}'
         if args.cmake_options:
-            cmake_config = cmake_config + " {}".format(args.cmake_options)
+            cmake_config = cmake_config + f" {args.cmake_options}"
 
         # set CMAKE_EXPORT_COMPILE_COMMANDS ON
         cmake_config = cmake_config + " -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
@@ -392,38 +334,46 @@ class Build:
         host_32bit_args = {"Windows": "", "Linux": "-m32", "Darwin": "-m32"}
         assert (
             self.BUILD_ENV in host_32bit_args
-        ), "code issue happened!!, please add 32bit build flags for: {} in host_32bit_args".format(
-            self.BUILD_ENV
-        )
+        ), f"code issue happened!!, please add 32bit build flags for: {self.BUILD_ENV} in host_32bit_args"
         if args.sub_command == "host_build" and args.build_for_32bit:
             assert (
                 cmake_config.find("CMAKE_C_FLAGS") < 0
             ), "code issue happened: double config CMAKE_C_FLAGS please FIXME!!"
-            cmake_config = cmake_config + ' -DCMAKE_C_FLAGS=\\"{}\\"'.format(
-                host_32bit_args[self.BUILD_ENV]
-            )
+            cmake_config = (
+                cmake_config +
+                f' -DCMAKE_C_FLAGS="{host_32bit_args[self.BUILD_ENV]}"')
             assert (
                 cmake_config.find("CMAKE_CXX_FLAGS") < 0
             ), "code issue happened: double config CMAKE_CXX_FLAGS please FIXME!!"
-            cmake_config = cmake_config + ' -DCMAKE_CXX_FLAGS=\\"{}\\"'.format(
-                host_32bit_args[self.BUILD_ENV]
-            )
+            cmake_config = (
+                cmake_config +
+                f' -DCMAKE_CXX_FLAGS="{host_32bit_args[self.BUILD_ENV]}"')
 
-        logging.debug("python3 args: {}".format(args))
-        config_cmd = "{}".format(cmake_config)
-        logging.debug("cmake config: {}".format(config_cmd))
-        subprocess.check_call('bash -c "{}"'.format(config_cmd), shell=True)
-        build_cmd = "{} {} {}".format(
-            self.NINJA_BASE, self.NINJA_INSTALL_STR, self.NINJA_VERBOSE
-        )
-        logging.debug("cmake build: {}".format(build_cmd))
-        subprocess.check_call('bash -c "{}"'.format(build_cmd), shell=True)
+        logging.debug(f"python3 args: {args}")
+        config_cmd = f"{cmake_config}"
+        build_cmd = f"{self.NINJA_BASE} {self.NINJA_INSTALL_STR} {self.NINJA_VERBOSE}"
+        with open(os.path.join(args.build_dir, "config.sh"), "w") as f:
+            f.write("#!/bin/bash\n")
+            f.write("set -ex\n")
+            f.write(f"{config_cmd}\n")
+            f.write(f"{build_cmd}\n")
+
+        # show config.sh
+        logging.debug("show config.sh")
+        with open(os.path.join(args.build_dir, "config.sh"), "r") as f:
+            logging.debug(f.read())
+
+        # run config.sh
+        logging.debug(f"run config.sh")
+        subprocess.check_call(f"bash {args.build_dir}/config.sh", shell=True)
 
 
 if __name__ == "__main__":
     LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
     DATE_FORMAT = "%Y/%m/%d %H:%M:%S"
-    logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+    logging.basicConfig(level=logging.DEBUG,
+                        format=LOG_FORMAT,
+                        datefmt=DATE_FORMAT)
 
     b = Build()
     b.build()
