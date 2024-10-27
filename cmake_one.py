@@ -25,7 +25,7 @@ class Build:
 
     cross_build_configs = {
         "ANDROID": ["x86_64", "i386", "aarch64", "armv7-a"],
-        "LINUX": ["aarch64", "armv7-a", "rv64gcv0p7", "rv4norvv"],
+        "LINUX": ["aarch64", "armv7-a", "rv64gcv", "rv64norvv"],
         "OHOS": ["aarch64"],
         "IOS": ["aarch64", "armv7-a"],
     }
@@ -136,7 +136,19 @@ class Build:
 
         # config build_dir and convert to abs path
         if args.build_dir is None:
-            args.build_dir = os.path.join(args.repo_dir, "build")
+            if args.sub_command == "cross_build":
+                args.build_dir = os.path.join(
+                    args.repo_dir,
+                    f"build-{args.cross_build_target_os}-{args.cross_build_target_arch}-{args.build_type}",
+                )
+            elif args.sub_command == "host_build":
+                args.build_dir = os.path.join(args.repo_dir,
+                                              f"build-host-{args.build_type}")
+            else:
+                logging.error(
+                    f"code issue happened for: {args.sub_command} please FIXME!!!"
+                )
+                code_not_imp()
         args.build_dir = os.path.abspath(args.build_dir)
 
         if args.install_dir is None:
@@ -236,20 +248,20 @@ class Build:
 
                 self.toolchains_config = f"-DCMAKE_TOOLCHAIN_FILE={ios_toolchains} -DIOS_TOOLCHAIN_ROOT={ios_toolchains} -DOS_PLATFORM={OS_PLATFORM} -DXCODE_IOS_PLATFORM={XCODE_IOS_PLATFORM} -DIOS_ARCH={IOS_ARCH_MAPS[args.cross_build_target_arch]} -DCMAKE_ASM_COMPILER=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -DCMAKE_MAKE_PROGRAM=ninja"
             elif args.cross_build_target_os == "LINUX":
-                rv64gcv0p7_toolchains = os.path.join(
+                rv64gcv_toolchains = os.path.join(
                     os.path.dirname(os.path.abspath(__file__)),
                     "toolchains/riscv64-rvv-linux-gnu.toolchain.cmake",
                 )
                 assert os.path.isfile(
-                    rv64gcv0p7_toolchains
-                ), f"code issue happened, can not find rv64gcv0p7 toolchains: {rv64gcv0p7_toolchains}"
+                    rv64gcv_toolchains
+                ), f"code issue happened, can not find rv64gcv toolchains: {rv64gcv_toolchains}"
                 rv64norvv_toolchains = os.path.join(
                     os.path.dirname(os.path.abspath(__file__)),
                     "toolchains/riscv64-linux-gnu.toolchain.cmake",
                 )
                 assert os.path.isfile(
                     rv64norvv_toolchains
-                ), "fcode issue happened, can not find rv64norvv toolchains: {rv64norvv_toolchains}"
+                ), f"code issue happened, can not find rv64norvv toolchains: {rv64norvv_toolchains}"
                 aarch64_toolchains = os.path.join(
                     os.path.dirname(os.path.abspath(__file__)),
                     "toolchains/aarch64-linux-gnu.toolchain.cmake",
@@ -271,8 +283,7 @@ class Build:
                 toolchains_maps = {
                     "aarch64": f"-DCMAKE_TOOLCHAIN_FILE={aarch64_toolchains}",
                     "armv7-a": f"-DCMAKE_TOOLCHAIN_FILE={armv7a_toolchains}",
-                    "rv64gcv0p7":
-                    f"-DCMAKE_TOOLCHAIN_FILE={rv64gcv0p7_toolchains}",
+                    "rv64gcv": f"-DCMAKE_TOOLCHAIN_FILE={rv64gcv_toolchains}",
                     "rv64norvv":
                     f"-DCMAKE_TOOLCHAIN_FILE={rv64norvv_toolchains}",
                 }
@@ -348,6 +359,12 @@ class Build:
             cmake_config = (
                 cmake_config +
                 f' -DCMAKE_CXX_FLAGS="{host_32bit_args[self.BUILD_ENV]}"')
+
+        # add -g for debug build by default
+        cmake_config = (
+            cmake_config +
+            ' -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS} -g" -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -g"'
+        )
 
         logging.debug(f"python3 args: {args}")
         config_cmd = f"{cmake_config}"

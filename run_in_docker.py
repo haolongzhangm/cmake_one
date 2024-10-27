@@ -31,23 +31,18 @@ def get_docker_tag_and_dockerfile() -> dict:
 
 
 def run_in_docker(cmd: str):
-    # check docker is installed
-    try:
-        subprocess.check_call("docker --version", shell=True)
-    except subprocess.CalledProcessError:
-        # HOWTO use rootless docker: https://docs.docker.com/engine/security/rootless/
-        # install cmd: curl -fsSL https://get.docker.com/rootless | sh
-        print(
-            "Docker is not installed, please refs: https://docs.docker.com/engine/security/rootless/"
-        )
-        raise
+    # check docker is installed and docker run in rootless mode
+    # why need rootless, because the docker run in root mode will cause the permission issue, if you want to run in root mode, you can remove the following code
+    docker_info = subprocess.check_output("docker info", shell=True)
+    assert (
+        b"rootless" in docker_info
+    ), "Docker is not running in rootless mode, please refs: https://docs.docker.com/engine/security/rootless/ also You can run the following command to install rootless docker: curl -fsSL https://get.docker.com/rootless | sh"
+
     user = getpass.getuser()
-    uid = os.getuid()
-    gid = os.getgid()
-    print(f"User: {user}, UID: {uid} GID: {gid}")
     # build the docker image
     tag, dockerfile = get_docker_tag_and_dockerfile()
-    build_cmd = f"docker build --build-arg USER_NAME={user} --build-arg USER_ID={uid} --build-arg USER_GID={gid} -t {tag} -f {dockerfile} ."
+    path_of_dockerfile = os.path.dirname(dockerfile)
+    build_cmd = f"docker build -t {tag} -f {dockerfile} {path_of_dockerfile}"
     print(f"Running: {build_cmd}")
     subprocess.check_call(build_cmd, shell=True)
 
@@ -69,7 +64,7 @@ def run_in_docker(cmd: str):
             docker_cmd += f" -e {env}=${env}"
     # map user .ssh to docker
     host_ssh_dir = os.path.join(os.path.expanduser("~"), ".ssh")
-    docker_ssh_dir = f"/home/{user}/.ssh"
+    docker_ssh_dir = f"/root/.ssh"
     docker_cmd += f" -v {host_ssh_dir}:{docker_ssh_dir}"
     # map tmp to docker tmp
     docker_cmd += " -v /tmp:/tmp:rw"
@@ -79,25 +74,45 @@ def run_in_docker(cmd: str):
     # split the cmd by space, then find --repo_dir xxx, --build_dir xxx, --install_dir xxx
     # then map the directory to docker
     cmd_parts = cmd.split()
+    print(f"cmd_parts: {cmd_parts}")
+    new_cmd = []
+    skip = False
     for i, part in enumerate(cmd_parts):
         if part == "--repo_dir":
-            docker_cmd += f" -v {cmd_parts[i+1]}:{cmd_parts[i+1]}:rw"
-        if part == "--build_dir":
-            docker_cmd += f" -v {cmd_parts[i+1]}:{cmd_parts[i+1]}:rw"
-        if part == "--install_dir":
-            docker_cmd += f" -v {cmd_parts[i+1]}:{cmd_parts[i+1]}:rw"
-    # add user id and group id
-    docker_cmd += f" -u {uid}:{gid}"
+            d = cmd_parts[i + 1]
+            d = os.path.abspath(d)
+            os.makedirs(d, exist_ok=True)
+            docker_cmd += f" -v {d}:{d}:rw"
+            new_cmd += [part, d]
+            skip = True
+        elif part == "--build_dir":
+            d = cmd_parts[i + 1]
+            d = os.path.abspath(d)
+            os.makedirs(d, exist_ok=True)
+            docker_cmd += f" -v {d}:{d}:rw"
+            new_cmd += [part, d]
+            skip = True
+        elif part == "--install_dir":
+            d = cmd_parts[i + 1]
+            d = os.path.abspath(d)
+            os.makedirs(d, exist_ok=True)
+            docker_cmd += f" -v {d}:{d}:rw"
+            new_cmd += [part, d]
+            skip = True
+        else:
+            if skip:
+                skip = False
+            else:
+                new_cmd.append(part)
+    new_cmd_str = " ".join(new_cmd)
     # add last build cmd
-    docker_cmd += f" {tag} /bin/bash -c '{cmd}'"
+    docker_cmd += f" {tag} /bin/bash -c '{new_cmd_str}'"
     print(f"Running: {docker_cmd}")
     subprocess.check_call(docker_cmd, shell=True)
 
 
 if __name__ == "__main__":
     cwd = os.path.dirname(__file__)
-    # change the current working directory to the directory of this file
-    os.chdir(cwd)
 
     cmake_one_py = os.path.join(os.path.dirname(__file__), "cmake_one.py")
     # pass all arguments to the cmake_one.py
