@@ -18,6 +18,7 @@ class Build:
     NINJA_INSTALL_STR = "install/strip"
     NINJA_VERBOSE = ""
     toolchains_config = ""
+    NINJA_JOBS = ""
 
     # Android-termux will detect as Linux, so we do not declare for Android
     # when is host build, we will use host compiler and build for host arch
@@ -83,6 +84,13 @@ class Build:
         )
 
         parser.add_argument(
+            "--ninja_jobs",
+            type=int,
+            default=None,
+            help="ninja jobs, default is None, will use system cpu count",
+        )
+
+        parser.add_argument(
             "--cmake_options",
             type=str,
             default=None,
@@ -122,6 +130,9 @@ class Build:
         )
 
         args = parser.parse_args()
+
+        if args.ninja_jobs:
+            self.NINJA_JOBS = f"-j{args.ninja_jobs}"
 
         # check repo_dir is valid and convert to abs path
         args.repo_dir = os.path.abspath(args.repo_dir)
@@ -368,7 +379,7 @@ class Build:
 
         logging.debug(f"python3 args: {args}")
         config_cmd = f"{cmake_config}"
-        build_cmd = f"{self.NINJA_BASE} {self.NINJA_INSTALL_STR} {self.NINJA_VERBOSE}"
+        build_cmd = f"{self.NINJA_BASE} {self.NINJA_INSTALL_STR} {self.NINJA_VERBOSE} {self.NINJA_JOBS}"
         with open(os.path.join(args.build_dir, "config.sh"), "w") as f:
             f.write("#!/bin/bash\n")
             f.write("set -ex\n")

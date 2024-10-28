@@ -58,7 +58,7 @@ def run_in_docker(cmd: str):
         docker_args = "-i"
 
     docker_cmd = f"docker run --rm {docker_args}"
-    map_to_envs = ["Commit_Id", "NINJA_JOBS", "MODELOPR_VER"]
+    map_to_envs = ["Commit_Id", "MODELOPR_VER"]
     for env in map_to_envs:
         if env in envs:
             docker_cmd += f" -e {env}=${env}"
