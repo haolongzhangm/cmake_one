@@ -380,10 +380,12 @@ class Build:
         logging.debug(f"python3 args: {args}")
         config_cmd = f"{cmake_config}"
         build_cmd = f"{self.NINJA_BASE} {self.NINJA_INSTALL_STR} {self.NINJA_VERBOSE} {self.NINJA_JOBS}"
+        copy_cmd = f"mv compile_commands.json {args.repo_dir}"
         with open(os.path.join(args.build_dir, "config.sh"), "w") as f:
             f.write("#!/bin/bash\n")
             f.write("set -ex\n")
             f.write(f"{config_cmd}\n")
+            f.write(f"{copy_cmd}\n")
             f.write(f"{build_cmd}\n")
 
         # show config.sh
