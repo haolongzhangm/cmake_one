@@ -19,6 +19,7 @@ class Build:
     NINJA_VERBOSE = ""
     toolchains_config = ""
     NINJA_JOBS = ""
+    NINJA_TARGET = ""
 
     # Android-termux will detect as Linux, so we do not declare for Android
     # when is host build, we will use host compiler and build for host arch
@@ -36,16 +37,16 @@ class Build:
 
     def detect_build_env(self):
         self.BUILD_ENV = platform.system()
-        assert (self.BUILD_ENV in self.SUPPORT_BUILD_ENV
-                ), f"now only support build env at: {self.SUPPORT_BUILD_ENV}"
+        assert (
+            self.BUILD_ENV in self.SUPPORT_BUILD_ENV
+        ), f"now only support build env at: {self.SUPPORT_BUILD_ENV}"
         if self.BUILD_ENV == "Windows":
             self.NINJA_BASE = "Ninja"
         logging.debug(f"build at host env: {self.BUILD_ENV}")
 
     def build(self):
         self.detect_build_env()
-        parser = argparse.ArgumentParser(
-            description="build tools for cmake project")
+        parser = argparse.ArgumentParser(description="build tools for cmake project")
         parser.add_argument(
             "--build_type",
             type=str,
@@ -59,6 +60,11 @@ class Build:
             help="remove old build dir before build, default off",
         )
         parser.add_argument(
+            "--not_do_link_build_and_install",
+            action="store_true",
+            help="do not link build and install dir to repo dir, default off",
+        )
+        parser.add_argument(
             "--build_with_ninja_verbose",
             action="store_true",
             help="ninja with verbose, default off",
@@ -67,8 +73,7 @@ class Build:
             "--repo_dir",
             type=str,
             default=os.path.join(os.path.dirname(__file__), "test_repo"),
-            help=
-            "repo dir, default is os.path.join(os.path.dirname(__file__), 'test_repo'), you can specify it for build other repo",
+            help="repo dir, default is os.path.join(os.path.dirname(__file__), 'test_repo'), you can specify it for build other repo",
         )
         parser.add_argument(
             "--build_dir",
@@ -91,38 +96,42 @@ class Build:
         )
 
         parser.add_argument(
+            "--ninja_target",
+            type=str,
+            default=None,
+            help="only build specify target, default is None, Warning: if config this, will config self.NINJA_INSTALL_STR to null",
+        )
+
+        parser.add_argument(
             "--cmake_options",
             type=str,
             default=None,
-            help=
-            "cmake options, used to config repo self define options, like -DENABLE_ASAN=ON, as this build tools is for all cmake project, so we can not config all options, so provide this option for user to config self define options",
+            help="cmake options, used to config repo self define options, like -DENABLE_ASAN=ON, as this build tools is for all cmake project, so we can not config all options, so provide this option for user to config self define options",
         )
 
-        sub_parser = parser.add_subparsers(dest="sub_command",
-                                           help="sub command for build",
-                                           required=True)
+        sub_parser = parser.add_subparsers(
+            dest="sub_command", help="sub command for build", required=True
+        )
 
         cross_build_p = sub_parser.add_parser(
-            "cross_build", help="cross build for other arch and os")
+            "cross_build", help="cross build for other arch and os"
+        )
 
         cross_build_p.add_argument(
             "--cross_build_target_os",
             type=str,
             default="ANDROID",
             choices=self.cross_build_configs.keys(),
-            help=
-            f"cross build target os, now support: {self.cross_build_configs.keys()}",
+            help=f"cross build target os, now support: {self.cross_build_configs.keys()}",
         )
         cross_build_p.add_argument(
             "--cross_build_target_arch",
             type=str,
             default="aarch64",
-            help=
-            f"cross build target arch, now support: {self.cross_build_configs}",
+            help=f"cross build target arch, now support: {self.cross_build_configs}",
         )
 
-        host_build_p = sub_parser.add_parser("host_build",
-                                             help="do host build,")
+        host_build_p = sub_parser.add_parser("host_build", help="do host build,")
         host_build_p.add_argument(
             "--build_for_32bit",
             action="store_true",
@@ -133,6 +142,9 @@ class Build:
 
         if args.ninja_jobs:
             self.NINJA_JOBS = f"-j{args.ninja_jobs}"
+
+        if args.ninja_target:
+            self.NINJA_TARGET = args.ninja_target
 
         # check repo_dir is valid and convert to abs path
         args.repo_dir = os.path.abspath(args.repo_dir)
@@ -153,8 +165,9 @@ class Build:
                     f"build-{args.cross_build_target_os}-{args.cross_build_target_arch}-{args.build_type}",
                 )
             elif args.sub_command == "host_build":
-                args.build_dir = os.path.join(args.repo_dir,
-                                              f"build-host-{args.build_type}")
+                args.build_dir = os.path.join(
+                    args.repo_dir, f"build-host-{args.build_type}"
+                )
             else:
                 logging.error(
                     f"code issue happened for: {args.sub_command} please FIXME!!!"
@@ -191,8 +204,8 @@ class Build:
                 args.cross_build_target_os in self.cross_build_configs.keys()
             ), f"error config: not support --cross_build_target_os {args.cross_build_target_os} now support one of: {self.cross_build_configs.keys()}"
             assert (
-                args.cross_build_target_arch in self.cross_build_configs[
-                    args.cross_build_target_os]
+                args.cross_build_target_arch
+                in self.cross_build_configs[args.cross_build_target_os]
             ), f"error config: not support --cross_build_target_arch {args.cross_build_target_arch} now support one of: {self.cross_build_configs[args.cross_build_target_os]}"
             if args.cross_build_target_os == "ANDROID":
                 assert (
@@ -200,7 +213,8 @@ class Build:
                 ), "can not find NDK_ROOT env, please download from https://developer.android.com/ndk/downloads then export it path to NDK_ROOT"
                 ndk_path = os.environ.get("NDK_ROOT")
                 android_toolchains = os.path.join(
-                    ndk_path, "build/cmake/android.toolchain.cmake")
+                    ndk_path, "build/cmake/android.toolchain.cmake"
+                )
                 assert os.path.isfile(
                     android_toolchains
                 ), f"error config env: NDK_ROOT: {ndk_path}, can not find android toolchains: {android_toolchains}"
@@ -222,7 +236,8 @@ class Build:
                 ), "can not find OHOS_NDK_ROOT env, https://gitee.com/openharmony/build/wikis/NDK/HOW%20TO%20USE%20NDK%20(linux), then export it path to OHOS_NDK_ROOT"
                 ohos_ndk_path = os.environ.get("OHOS_NDK_ROOT")
                 ohos_toolchains = os.path.join(
-                    ohos_ndk_path, "build/cmake/ohos.toolchain.cmake")
+                    ohos_ndk_path, "build/cmake/ohos.toolchain.cmake"
+                )
                 assert os.path.isfile(
                     ohos_toolchains
                 ), f"error config env: OHOS_NDK_ROOT: {ohos_ndk_path}, can not find ohos toolchains: {ohos_toolchains}"
@@ -295,14 +310,12 @@ class Build:
                     "aarch64": f"-DCMAKE_TOOLCHAIN_FILE={aarch64_toolchains}",
                     "armv7-a": f"-DCMAKE_TOOLCHAIN_FILE={armv7a_toolchains}",
                     "rv64gcv": f"-DCMAKE_TOOLCHAIN_FILE={rv64gcv_toolchains}",
-                    "rv64norvv":
-                    f"-DCMAKE_TOOLCHAIN_FILE={rv64norvv_toolchains}",
+                    "rv64norvv": f"-DCMAKE_TOOLCHAIN_FILE={rv64norvv_toolchains}",
                 }
                 assert (
                     args.cross_build_target_arch in toolchains_maps
                 ), f"code issue happened, please add {args.cross_build_target_arch} to toolchains_maps if support"
-                self.toolchains_config = toolchains_maps[
-                    args.cross_build_target_arch]
+                self.toolchains_config = toolchains_maps[args.cross_build_target_arch]
             else:
                 logging.error(
                     f"code issue happened for: {args.cross_build_target_os} please FIXME!!!"
@@ -325,13 +338,16 @@ class Build:
             elif self.BUILD_ENV == "Linux":
                 logging.debug("host build for Linux")
                 self.toolchains_config = (
-                    "-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++")
+                    "-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
+                )
             elif self.BUILD_ENV == "Darwin":
                 self.toolchains_config = (
-                    "-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++")
+                    "-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
+                )
                 logging.debug("host build for MACOS")
                 self.toolchains_config = (
-                    "-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++")
+                    "-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
+                )
             else:
                 logging.error(
                     f"code issue happened for: {self.BUILD_ENV} please FIXME!!!"
@@ -339,7 +355,8 @@ class Build:
                 code_not_imp()
         else:
             logging.error(
-                f"code issue happened for: {args.sub_command} please FIXME!!!")
+                f"code issue happened for: {args.sub_command} please FIXME!!!"
+            )
             code_not_imp()
 
         if args.build_with_ninja_verbose:
@@ -362,27 +379,35 @@ class Build:
                 cmake_config.find("CMAKE_C_FLAGS") < 0
             ), "code issue happened: double config CMAKE_C_FLAGS please FIXME!!"
             cmake_config = (
-                cmake_config +
-                f' -DCMAKE_C_FLAGS="{host_32bit_args[self.BUILD_ENV]}"')
+                cmake_config + f' -DCMAKE_C_FLAGS="{host_32bit_args[self.BUILD_ENV]}"'
+            )
             assert (
                 cmake_config.find("CMAKE_CXX_FLAGS") < 0
             ), "code issue happened: double config CMAKE_CXX_FLAGS please FIXME!!"
             cmake_config = (
-                cmake_config +
-                f' -DCMAKE_CXX_FLAGS="{host_32bit_args[self.BUILD_ENV]}"')
+                cmake_config + f' -DCMAKE_CXX_FLAGS="{host_32bit_args[self.BUILD_ENV]}"'
+            )
 
         # add -g for debug build by default
         cmake_config = (
-            cmake_config +
-            ' -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS} -g" -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -g"'
+            cmake_config
+            + ' -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS} -g" -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -g"'
         )
 
         logging.debug(f"python3 args: {args}")
         config_cmd = f"{cmake_config}"
-        build_cmd = f"{self.NINJA_BASE} {self.NINJA_INSTALL_STR} {self.NINJA_VERBOSE} {self.NINJA_JOBS}"
+        if args.ninja_target:
+            self.NINJA_INSTALL_STR = ""
+            logging.debug(
+                f"only build specify target: {args.ninja_target} , need config self.NINJA_INSTALL_STR to null"
+            )
+        build_cmd = f"{self.NINJA_BASE} {self.NINJA_INSTALL_STR} {self.NINJA_VERBOSE} {self.NINJA_JOBS} {self.NINJA_TARGET}"
         copy_cmd = f"mv compile_commands.json {args.repo_dir}"
-        link_install_cmd = f"ln -s {args.install_dir} {args.repo_dir}/install"
-        link_build_cmd = f"ln -s {args.build_dir} {args.repo_dir}/build"
+        link_install_cmd = ""
+        link_build_cmd = ""
+        if not args.not_do_link_build_and_install:
+            link_install_cmd = f"ln -snf {args.install_dir} {args.repo_dir}/install"
+            link_build_cmd = f"ln -snf {args.build_dir} {args.repo_dir}/build"
         with open(os.path.join(args.build_dir, "config.sh"), "w") as f:
             f.write("#!/bin/bash\n")
             f.write("set -ex\n")
@@ -405,9 +430,7 @@ class Build:
 if __name__ == "__main__":
     LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
     DATE_FORMAT = "%Y/%m/%d %H:%M:%S"
-    logging.basicConfig(level=logging.DEBUG,
-                        format=LOG_FORMAT,
-                        datefmt=DATE_FORMAT)
+    logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
     b = Build()
     b.build()

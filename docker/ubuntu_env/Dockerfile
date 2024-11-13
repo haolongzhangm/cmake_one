@@ -47,14 +47,14 @@ RUN python3 -m pip install gitpython requests
 # install cmake
 RUN python3 -m pip install cmake==3.29.6
 
-# install NDK 27
+# install NDK 27c
 RUN mkdir -p ${TOOLCHAIN_PATH}
-RUN curl https://dl.google.com/android/repository/android-ndk-r27-linux.zip -o ${TOOLCHAIN_PATH}/android-ndk-r27-linux.zip
-RUN unzip ${TOOLCHAIN_PATH}/android-ndk-r27-linux.zip -d ${TOOLCHAIN_PATH}
-RUN rm ${TOOLCHAIN_PATH}/android-ndk-r27-linux.zip
+RUN curl https://dl.google.com/android/repository/android-ndk-r27c-linux.zip -o ${TOOLCHAIN_PATH}/android-ndk-r27c-linux.zip
+RUN unzip ${TOOLCHAIN_PATH}/android-ndk-r27c-linux.zip -d ${TOOLCHAIN_PATH}
+RUN rm ${TOOLCHAIN_PATH}/android-ndk-r27c-linux.zip
 # set NDK env
-ENV ANDROID_NDK_HOME=${TOOLCHAIN_PATH}/android-ndk-r27
-ENV NDK_ROOT=${TOOLCHAIN_PATH}/android-ndk-r27
+ENV ANDROID_NDK_HOME=${TOOLCHAIN_PATH}/android-ndk-r27c
+ENV NDK_ROOT=${TOOLCHAIN_PATH}/android-ndk-r27c
 
 # install ohos OpenHarmony_5.0.2.50
 RUN curl https://cidownload.openharmony.cn/version/Master_Version/OpenHarmony_5.0.0.12_dev/20240219_200248/version-Master_Version-OpenHarmony_5.0.0.12_dev-20240219_200248-ohos-sdk-full.tar.gz -o ${TOOLCHAIN_PATH}/ohos-sdk-full.tar.gz
