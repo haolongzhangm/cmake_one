@@ -402,12 +402,13 @@ class Build:
                 f"only build specify target: {args.ninja_target} , need config self.NINJA_INSTALL_STR to null"
             )
         build_cmd = f"{self.NINJA_BASE} {self.NINJA_INSTALL_STR} {self.NINJA_VERBOSE} {self.NINJA_JOBS} {self.NINJA_TARGET}"
-        copy_cmd = f"mv compile_commands.json {args.repo_dir}"
+        copy_cmd = ""
         link_install_cmd = ""
         link_build_cmd = ""
         if not args.not_do_link_build_and_install:
             link_install_cmd = f"ln -snf {args.install_dir} {args.repo_dir}/install"
             link_build_cmd = f"ln -snf {args.build_dir} {args.repo_dir}/build"
+            copy_cmd = f"mv compile_commands.json {args.repo_dir}"
         with open(os.path.join(args.build_dir, "config.sh"), "w") as f:
             f.write("#!/bin/bash\n")
             f.write("set -ex\n")
