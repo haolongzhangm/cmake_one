@@ -1,5 +1,6 @@
 set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_PROCESSOR aarch32)
+set(ARM_CROSS_BUILD_ARCH armv7)
 
 # now we support cross build for aarch64-linux by clang
 # host always need install some base package, like clang, llvm, gcc, g++
