@@ -106,7 +106,7 @@ class Build:
             "--cmake_options",
             type=str,
             default=None,
-            help="cmake options, used to config repo self define options, like -DENABLE_ASAN=ON, as this build tools is for all cmake project, so we can not config all options, so provide this option for user to config self define options",
+            help='cmake options, used to config repo self define options, like -DENABLE_ASAN=ON, as this build tools is for all cmake project, so we can not config all options, so provide this option for user to config self define options, WARN: use "ENABLE_ASAN=ON" instead of "-DENABLE_ASAN=ON", if you want to config more than one options, split by space, for example: "ENABLE_ASAN=ON ENABLE_TSAN=ON"',
         )
 
         sub_parser = parser.add_subparsers(
@@ -364,7 +364,11 @@ class Build:
 
         cmake_config = f'cmake -G Ninja -H"{args.repo_dir}" -B"{args.build_dir}" {self.toolchains_config} -DCMAKE_INSTALL_PREFIX="{args.install_dir}" -DCMAKE_BUILD_TYPE={args.build_type}'
         if args.cmake_options:
-            cmake_config = cmake_config + f" {args.cmake_options}"
+            # split by space, then add -D to each item
+            _ = args.cmake_options.split(" ")
+            user_flags = " ".join([f"-D{i}" for i in _])
+            logging.debug(f"user CMake override flags: {user_flags}")
+            cmake_config = cmake_config + " " + user_flags + " "
 
         # set CMAKE_EXPORT_COMPILE_COMMANDS ON
         cmake_config = cmake_config + " -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
