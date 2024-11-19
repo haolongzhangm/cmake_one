@@ -6,7 +6,7 @@ import sys
 
 
 def get_docker_tag_and_dockerfile() -> dict:
-    cwd = os.path.dirname(__file__)
+    cwd = os.path.dirname(os.path.abspath(__file__))
     DOCKER_INFO = {
         "Linux": [
             "ubuntu_2404",
@@ -16,17 +16,14 @@ def get_docker_tag_and_dockerfile() -> dict:
             "windows_env",
             os.path.join(cwd, "docker", "windows_env", "Dockerfile"),
         ],
-        "Darwin":
-        ["macos_env",
-         os.path.join(cwd, "docker", "macos_env", "Dockerfile")],
+        "Darwin": ["macos_env", os.path.join(cwd, "docker", "macos_env", "Dockerfile")],
     }
     plt = platform.system()
     assert plt in DOCKER_INFO, f"Platform {plt} is not supported"
     i = DOCKER_INFO[plt]
     tag = i[0]
     dockerfile = i[1]
-    assert os.path.exists(
-        dockerfile), f"dockerfile {dockerfile} does not exist"
+    assert os.path.exists(dockerfile), f"dockerfile {dockerfile} does not exist"
     return tag, dockerfile
 
 
@@ -41,7 +38,7 @@ def run_in_docker(cmd: str):
     user = getpass.getuser()
     # build the docker image
     tag, dockerfile = get_docker_tag_and_dockerfile()
-    path_of_dockerfile = os.path.dirname(dockerfile)
+    path_of_dockerfile = os.path.dirname(os.path.abspath(dockerfile))
     build_cmd = f"docker build -t {tag} -f {dockerfile} {path_of_dockerfile}"
     print(f"Running: {build_cmd}")
     subprocess.check_call(build_cmd, shell=True)
@@ -112,9 +109,9 @@ def run_in_docker(cmd: str):
 
 
 if __name__ == "__main__":
-    cwd = os.path.dirname(__file__)
-
-    cmake_one_py = os.path.join(os.path.dirname(__file__), "cmake_one.py")
+    cmake_one_py = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "cmake_one.py"
+    )
     # pass all arguments to the cmake_one.py
     cmd = f"python3 {cmake_one_py} {' '.join(sys.argv[1:])}"
     run_in_docker(cmd)

@@ -72,8 +72,10 @@ class Build:
         parser.add_argument(
             "--repo_dir",
             type=str,
-            default=os.path.join(os.path.dirname(__file__), "test_repo"),
-            help="repo dir, default is os.path.join(os.path.dirname(__file__), 'test_repo'), you can specify it for build other repo",
+            default=os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "test_repo"
+            ),
+            help="repo dir, default is os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_repo'), you can specify it for build other repo",
         )
         parser.add_argument(
             "--build_dir",
@@ -403,7 +405,7 @@ class Build:
         if args.ninja_target:
             self.NINJA_INSTALL_STR = ""
             logging.debug(
-                f"only build specify target: {args.ninja_target} , need config self.NINJA_INSTALL_STR to null"
+                f"only build specify target: {args.ninja_target} , need config self.NINJA_INSTALL_STR to null, caused by ninja install/strip will trigger all target build"
             )
         build_cmd = f"{self.NINJA_BASE} {self.NINJA_INSTALL_STR} {self.NINJA_VERBOSE} {self.NINJA_JOBS} {self.NINJA_TARGET}"
         copy_cmd = ""
