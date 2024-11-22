@@ -72,3 +72,7 @@ RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y \
 gcc-riscv64-linux-gnu
 RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y \
 g++-riscv64-linux-gnu
+
+# for host i386
+RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y \
+g++-multilib

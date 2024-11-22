@@ -20,6 +20,8 @@ class Build:
     toolchains_config = ""
     NINJA_JOBS = ""
     NINJA_TARGET = ""
+    CMAKE_C_FLAGS_CONFIG = ""
+    CMAKE_CXX_FLAGS_CONFIG = ""
 
     # Android-termux will detect as Linux, so we do not declare for Android
     # when is host build, we will use host compiler and build for host arch
@@ -384,22 +386,25 @@ class Build:
             assert (
                 cmake_config.find("CMAKE_C_FLAGS") < 0
             ), "code issue happened: double config CMAKE_C_FLAGS please FIXME!!"
-            cmake_config = (
-                cmake_config + f' -DCMAKE_C_FLAGS="{host_32bit_args[self.BUILD_ENV]}"'
-            )
             assert (
                 cmake_config.find("CMAKE_CXX_FLAGS") < 0
             ), "code issue happened: double config CMAKE_CXX_FLAGS please FIXME!!"
-            cmake_config = (
-                cmake_config + f' -DCMAKE_CXX_FLAGS="{host_32bit_args[self.BUILD_ENV]}"'
+            self.CMAKE_C_FLAGS_CONFIG = (
+                self.CMAKE_C_FLAGS_CONFIG + f"{host_32bit_args[self.BUILD_ENV]}"
+            )
+            self.CMAKE_CXX_FLAGS_CONFIG = (
+                self.CMAKE_CXX_FLAGS_CONFIG + f"{host_32bit_args[self.BUILD_ENV]}"
             )
 
         # add -g for debug build by default
+        self.CMAKE_C_FLAGS_CONFIG = self.CMAKE_C_FLAGS_CONFIG + " -g"
+        self.CMAKE_CXX_FLAGS_CONFIG = self.CMAKE_CXX_FLAGS_CONFIG + " -g"
+
+        # now freeze CMAKE_C_FLAGS_CONFIG and CMAKE_CXX_FLAGS_CONFIG
         cmake_config = (
             cmake_config
-            + ' -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS} -g" -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -g"'
+            + f' -DCMAKE_C_FLAGS="{self.CMAKE_C_FLAGS_CONFIG}" -DCMAKE_CXX_FLAGS="{self.CMAKE_CXX_FLAGS_CONFIG}"'
         )
-
         logging.debug(f"python3 args: {args}")
         config_cmd = f"{cmake_config}"
         if args.ninja_target:
