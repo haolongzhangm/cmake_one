@@ -172,6 +172,10 @@ class Build:
                 args.build_dir = os.path.join(
                     args.repo_dir, f"build-host-{args.build_type}"
                 )
+                if args.build_for_32bit:
+                    args.build_dir = os.path.join(
+                        args.repo_dir, f"build-host-{args.build_type}-32bit"
+                    )
             else:
                 logging.error(
                     f"code issue happened for: {args.sub_command} please FIXME!!!"
@@ -401,10 +405,14 @@ class Build:
         self.CMAKE_CXX_FLAGS_CONFIG = self.CMAKE_CXX_FLAGS_CONFIG + " -g"
 
         # now freeze CMAKE_C_FLAGS_CONFIG and CMAKE_CXX_FLAGS_CONFIG
-        cmake_config = (
-            cmake_config
-            + f' -DCMAKE_C_FLAGS="{self.CMAKE_C_FLAGS_CONFIG}" -DCMAKE_CXX_FLAGS="{self.CMAKE_CXX_FLAGS_CONFIG}"'
-        )
+        if self.CMAKE_C_FLAGS_CONFIG:
+            cmake_config = (
+                cmake_config + f' -DCMAKE_C_FLAGS="{self.CMAKE_C_FLAGS_CONFIG}"'
+            )
+        if self.CMAKE_CXX_FLAGS_CONFIG:
+            cmake_config = (
+                cmake_config + f' -DCMAKE_CXX_FLAGS="{self.CMAKE_CXX_FLAGS_CONFIG}"'
+            )
         logging.debug(f"python3 args: {args}")
         config_cmd = f"{cmake_config}"
         if args.ninja_target:
