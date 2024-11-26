@@ -1,6 +1,6 @@
 set(CMAKE_SYSTEM_NAME Linux)
-set(CMAKE_SYSTEM_PROCESSOR arm)
-set(ARM_CROSS_BUILD_ARCH arm)
+set(CMAKE_SYSTEM_PROCESSOR armv7)
+set(ARM_CROSS_BUILD_ARCH armv7)
 
 # now we support cross build for aarch64-linux by clang
 # host always need install some base package, like clang, llvm, gcc, g++
@@ -10,6 +10,6 @@ set(CMAKE_C_COMPILER clang)
 set(CMAKE_CXX_COMPILER clang++)
 set(CMAKE_CXX_COMPILER_TARGET arm-linux-gnueabihf)
 set(CMAKE_C_COMPILER_TARGET arm-linux-gnueabihf)
-set(CMAKE_COMMON_FLAG "-Wno-error=attributes -Wno-error=cpp -Wno-error=sign-compare")
+set(CMAKE_COMMON_FLAG "-Wno-error=attributes -Wno-error=cpp -Wno-error=sign-compare -mfloat-abi=hard -mfpu=neon -mthumb")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_COMMON_FLAG}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_COMMON_FLAG}")
