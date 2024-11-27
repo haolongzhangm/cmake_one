@@ -72,6 +72,11 @@ class Build:
             help="ninja with verbose, default off",
         )
         parser.add_argument(
+            "--build_with_ninja_explain",
+            action="store_true",
+            help="ninja with -d explain to show command reason, default off",
+        )
+        parser.add_argument(
             "--repo_dir",
             type=str,
             default=os.path.join(
@@ -369,6 +374,10 @@ class Build:
 
         if args.build_with_ninja_verbose:
             self.NINJA_VERBOSE = "-v"
+
+        if args.build_with_ninja_explain:
+            # force to enable verbose when explain
+            self.NINJA_VERBOSE = "-v -d explain"
 
         cmake_config = f'cmake -G Ninja -H"{args.repo_dir}" -B"{args.build_dir}" {self.toolchains_config} -DCMAKE_INSTALL_PREFIX="{args.install_dir}" -DCMAKE_BUILD_TYPE={args.build_type}'
         if args.cmake_options:
