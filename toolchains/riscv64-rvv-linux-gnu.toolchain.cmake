@@ -12,3 +12,5 @@ set(CMAKE_C_COMPILER_TARGET riscv64-linux-gnu)
 set(CMAKE_COMMON_FLAG "-Wno-error=attributes -Wno-error=cpp -Wno-error=sign-compare -march=rv64gcv_zfh -mabi=lp64d")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_COMMON_FLAG}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_COMMON_FLAG}")
+# this flag just for some project use RISCV_TOOLCHAIN_ROOT to identification is RVV, infact this tools do not use it, so we just set it to a fake path
+set(RISCV_TOOLCHAIN_ROOT "NO-EXIST")
