@@ -4,6 +4,7 @@ import argparse
 import logging
 import os
 import platform
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -191,24 +192,6 @@ class Build:
         if args.install_dir is None:
             args.install_dir = os.path.join(args.build_dir, "install")
         args.install_dir = os.path.abspath(args.install_dir)
-
-        # remove old build dir if need
-        if args.remove_old_build:
-            logging.debug(f"remove old build dir: {args.build_dir}")
-            subprocess.check_call(f"rm -rf {args.build_dir}", shell=True)
-            logging.debug(f"remove old install dir: {args.install_dir} done")
-            subprocess.check_call(f"rm -rf {args.install_dir}", shell=True)
-        logging.debug(f"create new build dir: {args.build_dir}")
-        subprocess.check_call(f"mkdir -p {args.build_dir}", shell=True)
-        logging.debug(f"create new install dir: {args.install_dir}")
-        subprocess.check_call(f"mkdir -p {args.install_dir}", shell=True)
-
-        logging.debug(
-            f"build dir info: repo_dir: {args.repo_dir} build_dir: {args.build_dir} install_dir: {args.install_dir}"
-        )
-
-        # now cd to build_dir
-        os.chdir(args.build_dir)
 
         if args.sub_command == "cross_build":
             # check cross_build_target_arch
@@ -429,6 +412,24 @@ class Build:
             logging.debug(
                 f"only build specify target: {args.ninja_target} , need config self.NINJA_INSTALL_STR to null, caused by ninja install/strip will trigger all target build"
             )
+
+        # remove old build dir if need
+        if args.remove_old_build:
+            logging.debug(f"remove old build dir: {args.build_dir}")
+            if os.path.exists(args.build_dir):
+                shutil.rmtree(args.build_dir)
+            logging.debug(f"remove old install dir: {args.install_dir} done")
+            if os.path.exists(args.install_dir):
+                shutil.rmtree(args.install_dir)
+        logging.debug(f"create new build dir: {args.build_dir}")
+        os.makedirs(args.build_dir, exist_ok=True)
+        logging.debug(f"create new install dir: {args.install_dir}")
+        os.makedirs(args.install_dir, exist_ok=True)
+
+        logging.debug(
+            f"build dir info: repo_dir: {args.repo_dir} build_dir: {args.build_dir} install_dir: {args.install_dir}"
+        )
+
         build_cmd = f"{self.NINJA_BASE} {self.NINJA_INSTALL_STR} {self.NINJA_VERBOSE} {self.NINJA_JOBS} {self.NINJA_TARGET}"
         copy_cmd = ""
         link_install_cmd = ""
@@ -452,6 +453,7 @@ class Build:
             logging.debug(f.read())
 
         # run config.sh
+        os.chdir(args.build_dir)
         logging.debug(f"run config.sh")
         subprocess.check_call(f"bash {args.build_dir}/config.sh", shell=True)
 
