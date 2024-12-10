@@ -459,7 +459,7 @@ class Build:
 
 
 if __name__ == "__main__":
-    LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
+    LOG_FORMAT = "[cmake_one] - %(asctime)s - %(levelname)s - %(message)s"
     DATE_FORMAT = "%Y/%m/%d %H:%M:%S"
     logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 

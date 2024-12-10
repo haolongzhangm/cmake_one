@@ -1,4 +1,5 @@
 import getpass
+import logging
 import os
 import platform
 import subprocess
@@ -40,18 +41,18 @@ def run_in_docker(cmd: str):
     tag, dockerfile = get_docker_tag_and_dockerfile()
     path_of_dockerfile = os.path.dirname(os.path.abspath(dockerfile))
     build_cmd = f"docker build -t {tag} -f {dockerfile} {path_of_dockerfile}"
-    print(f"Running: {build_cmd}")
+    logging.debug(f"Running: {build_cmd}")
     subprocess.check_call(build_cmd, shell=True)
 
-    print(f"Running: {cmd} in docker")
+    logging.debug(f"Running: {cmd} in docker")
 
     docker_args = "-it"
     envs = os.environ
     if "JENKINS_HOME" in envs:
-        print("run in jenkins, set docker_args to -i")
+        logging.debug("run in jenkins, set docker_args to -i")
         docker_args = "-i"
     if "CI_SERVER_NAME" in envs and envs["CI_SERVER_NAME"] == "GitLab":
-        print("run in GitLab, set docker_args to -i")
+        logging.debug("run in GitLab, set docker_args to -i")
         docker_args = "-i"
 
     docker_cmd = f"docker run --rm {docker_args}"
@@ -71,7 +72,7 @@ def run_in_docker(cmd: str):
     # split the cmd by space, then find --repo_dir xxx, --build_dir xxx, --install_dir xxx
     # then map the directory to docker
     cmd_parts = cmd.split()
-    print(f"cmd_parts: {cmd_parts}")
+    logging.debug(f"cmd_parts: {cmd_parts}")
     new_cmd = []
     skip = False
     for i, part in enumerate(cmd_parts):
@@ -104,11 +105,14 @@ def run_in_docker(cmd: str):
     new_cmd_str = " ".join(new_cmd)
     # add last build cmd
     docker_cmd += f" {tag} /bin/bash -c '{new_cmd_str}'"
-    print(f"Running: {docker_cmd}")
+    logging.debug(f"Running: {docker_cmd}")
     subprocess.check_call(docker_cmd, shell=True)
 
 
 if __name__ == "__main__":
+    LOG_FORMAT = "[run_in_docker] - %(asctime)s - %(levelname)s - %(message)s"
+    DATE_FORMAT = "%Y/%m/%d %H:%M:%S"
+    logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
     cmake_one_py = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "cmake_one.py"
     )
