@@ -59,7 +59,14 @@ def run_in_docker(cmd: str):
     map_to_envs = ["Commit_Id", "MODELOPR_VER"]
     for env in map_to_envs:
         if env in envs:
-            docker_cmd += f" -e {env}=${env}"
+            value = envs[env]
+            docker_cmd += f" -e {env}={env}"
+    # this map is used to correct compile_commands.json for sysroot
+    map_to_envs_with_org_prefix = ["TEST_NOT_EXIT", "NDK_ROOT", "OHOS_NDK_ROOT"]
+    for env in map_to_envs_with_org_prefix:
+        if env in envs:
+            value = envs[env]
+            docker_cmd += f" -e CMAKE_ONE_PRFIX_{env}={value}"
     # map user .ssh to docker
     host_ssh_dir = os.path.join(os.path.expanduser("~"), ".ssh")
     docker_ssh_dir = f"/root/.ssh"

@@ -434,14 +434,73 @@ class Build:
         copy_cmd = ""
         link_install_cmd = ""
         link_build_cmd = ""
+        fix_compile_commands_cmd = ""
         if not args.not_do_link_build_and_install:
             link_install_cmd = f"ln -snf {args.install_dir} {args.repo_dir}/install"
             link_build_cmd = f"ln -snf {args.build_dir} {args.repo_dir}/build"
-            copy_cmd = f"mv compile_commands.json {args.repo_dir}"
+
+        # now try to fix compile_commands.json for sysroot before do copy
+        # case one: cross build for Android
+        envs = os.environ
+        if (
+            args.sub_command == "cross_build"
+            and args.cross_build_target_os == "ANDROID"
+            and "CMAKE_ONE_PRFIX_NDK_ROOT" in envs
+        ):
+            # check NDK_ROOT
+            assert (
+                "NDK_ROOT" in os.environ
+            ), "can not find NDK_ROOT env, please download from https://developer.android.com/ndk/downloads then export it path to NDK_ROOT"
+            ndk_path = os.environ.get("NDK_ROOT")
+            android_sysroot = os.path.join(
+                ndk_path, "toolchains", "llvm", "prebuilt", "linux-x86_64", "sysroot"
+            )
+            assert os.path.isdir(
+                android_sysroot
+            ), f"error config env: NDK_ROOT: {ndk_path}, can not find android sysroot: {android_sysroot}"
+            host_android_sysroot = os.path.join(
+                envs["CMAKE_ONE_PRFIX_NDK_ROOT"],
+                "toolchains",
+                "llvm",
+                "prebuilt",
+                "linux-x86_64",
+                "sysroot",
+            )
+            logging.debug(f"change {android_sysroot} to {host_android_sysroot}")
+            logging.debug(f"fix compile_commands.json for Android sysroot")
+            # replace android_sysroot to host_android_sysroot
+            fix_compile_commands_cmd = f"sed -i 's|{android_sysroot}|{host_android_sysroot}|g' compile_commands.json"
+        # case two: cross build for OHOS, change $OHOS_NDK_ROOT/sysroot to $CMAKE_ONE_PRFIX_OHOS_NDK_ROOT/sysroot
+        if (
+            args.sub_command == "cross_build"
+            and args.cross_build_target_os == "OHOS"
+            and "CMAKE_ONE_PRFIX_OHOS_NDK_ROOT" in envs
+        ):
+            # check OHOS_NDK_ROOT
+            assert (
+                "OHOS_NDK_ROOT" in os.environ
+            ), "can not find OHOS_NDK_ROOT env, https://gitee.com/openharmony/build/wikis/NDK/HOW%20TO%20USE%20NDK%20(linux), then export it path to OHOS_NDK_ROOT"
+            ohos_ndk_path = os.environ.get("OHOS_NDK_ROOT")
+            ohos_sysroot = os.path.join(ohos_ndk_path, "sysroot")
+            assert os.path.isdir(
+                ohos_sysroot
+            ), f"error config env: OHOS_NDK_ROOT: {ohos_ndk_path}, can not find ohos sysroot: {ohos_sysroot}"
+            host_ohos_sysroot = os.path.join(
+                envs["CMAKE_ONE_PRFIX_OHOS_NDK_ROOT"], "sysroot"
+            )
+            logging.debug(f"change {ohos_sysroot} to {host_ohos_sysroot}")
+            logging.debug(f"fix compile_commands.json for OHOS sysroot")
+            # replace ohos_sysroot to host_ohos_sysroot
+            fix_compile_commands_cmd = (
+                f"sed -i 's|{ohos_sysroot}|{host_ohos_sysroot}|g' compile_commands.json"
+            )
+        copy_cmd = f"mv compile_commands.json {args.repo_dir}"
+
         with open(os.path.join(args.build_dir, "config.sh"), "w") as f:
             f.write("#!/bin/bash\n")
             f.write("set -ex\n")
             f.write(f"{config_cmd}\n")
+            f.write(f"{fix_compile_commands_cmd}\n")
             f.write(f"{copy_cmd}\n")
             f.write(f"{build_cmd}\n")
             f.write(f"{link_install_cmd}\n")
