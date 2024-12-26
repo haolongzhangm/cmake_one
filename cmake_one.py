@@ -216,10 +216,10 @@ class Build:
                 ), f"error config env: NDK_ROOT: {ndk_path}, can not find android toolchains: {android_toolchains}"
                 logging.debug(f"use NDK toolchains: {android_toolchains}")
                 ABI_NATIVE_LEVEL_MAPS = {
-                    "x86_64": ["x86_64", 21],
-                    "i386": ["x86", 16],
-                    "aarch64": ["arm64-v8a", 30],
-                    "armv7-a": ["armeabi-v7a with NEON", 30],
+                    "x86_64": ["x86_64", 23],
+                    "i386": ["x86", 32],
+                    "aarch64": ["arm64-v8a", 23],
+                    "armv7-a": ["armeabi-v7a with NEON", 23],
                 }
                 assert (
                     args.cross_build_target_arch in ABI_NATIVE_LEVEL_MAPS
