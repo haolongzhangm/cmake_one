@@ -35,6 +35,13 @@ class Build:
         "IOS": ["aarch64", "armv7-a"],
     }
 
+    SUPPORT_ASAN_TYPES = ["ASAN", "HWASAN"]
+    ASAN_CMAKE_CONFIG = {
+        "ASAN": "-fsanitize=address -fno-omit-frame-pointer",
+        "HWASAN": "-fsanitize=hwaddress -fno-omit-frame-pointer",
+        None: "",
+    }
+
     def code_not_imp():
         raise CODE_NOT_IMP
 
@@ -117,6 +124,13 @@ class Build:
             type=str,
             default=None,
             help='cmake options, used to config repo self define options, like -DENABLE_ASAN=ON, as this build tools is for all cmake project, so we can not config all options, so provide this option for user to config self define options, WARN: use "ENABLE_ASAN=ON" instead of "-DENABLE_ASAN=ON", if you want to config more than one options, split by space, for example: "ENABLE_ASAN=ON ENABLE_TSAN=ON"',
+        )
+        parser.add_argument(
+            "--ASAN",
+            type=str,
+            default=None,
+            choices=self.SUPPORT_ASAN_TYPES,
+            help=f"enable ASAN or HWASAN, now support: {self.SUPPORT_ASAN_TYPES}, default is None",
         )
 
         sub_parser = parser.add_subparsers(
@@ -393,8 +407,12 @@ class Build:
             )
 
         # add -g for debug build by default
-        self.CMAKE_C_FLAGS_CONFIG = self.CMAKE_C_FLAGS_CONFIG + " -g"
-        self.CMAKE_CXX_FLAGS_CONFIG = self.CMAKE_CXX_FLAGS_CONFIG + " -g"
+        self.CMAKE_C_FLAGS_CONFIG = (
+            self.CMAKE_C_FLAGS_CONFIG + " -g " + self.ASAN_CMAKE_CONFIG[args.ASAN]
+        )
+        self.CMAKE_CXX_FLAGS_CONFIG = (
+            self.CMAKE_CXX_FLAGS_CONFIG + " -g " + self.ASAN_CMAKE_CONFIG[args.ASAN]
+        )
 
         # now freeze CMAKE_C_FLAGS_CONFIG and CMAKE_CXX_FLAGS_CONFIG
         if self.CMAKE_C_FLAGS_CONFIG:
@@ -404,6 +422,11 @@ class Build:
         if self.CMAKE_CXX_FLAGS_CONFIG:
             cmake_config = (
                 cmake_config + f' -DCMAKE_CXX_FLAGS="{self.CMAKE_CXX_FLAGS_CONFIG}"'
+            )
+        if args.ASAN is not None:
+            cmake_config = (
+                cmake_config
+                + " -DCMAKE_SHARED_LINKER_FLAGS=-static-libsan -DCMAKE_EXE_LINKER_FLAGS=-static-libsan -DCMAKE_MODULE_LINKER_FLAGS=-static-libsan"
             )
         logging.debug(f"python3 args: {args}")
         config_cmd = f"{cmake_config}"
