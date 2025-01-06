@@ -42,6 +42,12 @@ class Build:
         None: "",
     }
 
+    ASAN_CMAKE_LINK_CONFIG = {
+        "ASAN": "-fsanitize=address",
+        "HWASAN": "-fsanitize=hwaddress",
+        None: "",
+    }
+
     def code_not_imp():
         raise CODE_NOT_IMP
 
@@ -424,9 +430,11 @@ class Build:
                 cmake_config + f' -DCMAKE_CXX_FLAGS="{self.CMAKE_CXX_FLAGS_CONFIG}"'
             )
         if args.ASAN is not None:
+            link_flags = self.ASAN_CMAKE_LINK_CONFIG[args.ASAN]
+            logging.debug(f"asan link_flags: {link_flags}")
             cmake_config = (
                 cmake_config
-                + " -DCMAKE_SHARED_LINKER_FLAGS=-static-libsan -DCMAKE_EXE_LINKER_FLAGS=-static-libsan -DCMAKE_MODULE_LINKER_FLAGS=-static-libsan"
+                + f' -DCMAKE_SHARED_LINKER_FLAGS="{link_flags}" -DCMAKE_EXE_LINKER_FLAGS=-static-libsan -DCMAKE_MODULE_LINKER_FLAGS=-static-libsan '
             )
         logging.debug(f"python3 args: {args}")
         config_cmd = f"{cmake_config}"
