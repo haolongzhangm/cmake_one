@@ -48,6 +48,12 @@ class Build:
         None: "",
     }
 
+    ASAN_CMAKE_LINK_CONFIG_NON_ANDROID = {
+        "ASAN": "-shared-libasan",
+        "HWASAN": "-shared-libhwasan",
+        None: "",
+    }
+
     def code_not_imp():
         raise CODE_NOT_IMP
 
@@ -431,11 +437,17 @@ class Build:
             )
         if args.ASAN is not None:
             link_flags = self.ASAN_CMAKE_LINK_CONFIG[args.ASAN]
-            logging.debug(f"asan link_flags: {link_flags}")
-            cmake_config = (
-                cmake_config
-                + f' -DCMAKE_SHARED_LINKER_FLAGS="{link_flags}" -DCMAKE_EXE_LINKER_FLAGS=-static-libsan -DCMAKE_MODULE_LINKER_FLAGS=-static-libsan '
-            )
+            link_flags_non_android = self.ASAN_CMAKE_LINK_CONFIG_NON_ANDROID[args.ASAN]
+
+            asan_link_asan_flag = f' -DCMAKE_SHARED_LINKER_FLAGS="{link_flags_non_android}" -DCMAKE_EXE_LINKER_FLAGS="{link_flags_non_android}" -DCMAKE_MODULE_LINKER_FLAGS="{link_flags_non_android}" '
+            if (
+                args.sub_command == "cross_build"
+                and args.cross_build_target_os == "ANDROID"
+            ):
+                asan_link_asan_flag = f' -DCMAKE_SHARED_LINKER_FLAGS="{link_flags}" -DCMAKE_EXE_LINKER_FLAGS=-static-libsan -DCMAKE_MODULE_LINKER_FLAGS=-static-libsan '
+
+            logging.debug(f"asan link_flags: {asan_link_asan_flag}")
+            cmake_config = cmake_config + asan_link_asan_flag
         logging.debug(f"python3 args: {args}")
         config_cmd = f"{cmake_config}"
         if args.ninja_target:

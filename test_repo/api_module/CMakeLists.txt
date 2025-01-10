@@ -7,6 +7,7 @@ add_library(api_module_obj OBJECT ${SOURCE_FILES})
 target_include_directories(api_module PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(api_module_obj PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(api_module_shared PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_options(api_module_shared PRIVATE "-Wl,--no-undefined")
 
 # install api_module
 install(TARGETS api_module DESTINATION lib)
