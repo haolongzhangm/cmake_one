@@ -76,3 +76,6 @@ RUN rm ${TOOLCHAIN_PATH}/android-ndk-r26c-linux.zip
 # set NDK env
 ENV ANDROID_NDK_HOME=${TOOLCHAIN_PATH}/android-ndk-r26c
 ENV NDK_ROOT=${TOOLCHAIN_PATH}/android-ndk-r26c
+
+# more env for python3
+RUN python3 -m pip install json5 wget numpy
