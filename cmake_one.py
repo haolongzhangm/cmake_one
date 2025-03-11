@@ -6,6 +6,7 @@ import os
 import platform
 import shutil
 import subprocess
+import time
 from pathlib import Path
 
 
@@ -70,6 +71,7 @@ class Build:
         self.detect_build_env()
         parser = argparse.ArgumentParser(description="build tools for cmake project")
         parser.add_argument(
+            "-bt",
             "--build_type",
             type=str,
             choices=["Release", "Debug"],
@@ -77,6 +79,7 @@ class Build:
             help="build type, default is Release",
         )
         parser.add_argument(
+            "-ro",
             "--remove_old_build",
             action="store_true",
             help="remove old build dir before build, default off",
@@ -87,16 +90,19 @@ class Build:
             help="do not link build and install dir to repo dir, default off",
         )
         parser.add_argument(
+            "-nv",
             "--build_with_ninja_verbose",
             action="store_true",
             help="ninja with verbose, default off",
         )
         parser.add_argument(
+            "-ne",
             "--build_with_ninja_explain",
             action="store_true",
             help="ninja with -d explain to show command reason, default off",
         )
         parser.add_argument(
+            "-rd",
             "--repo_dir",
             type=str,
             default=os.path.join(
@@ -105,12 +111,14 @@ class Build:
             help="repo dir, default is os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_repo'), you can specify it for build other repo",
         )
         parser.add_argument(
+            "-bd",
             "--build_dir",
             type=str,
             default=None,
             help="if not specify, will use repo_dir/build",
         )
         parser.add_argument(
+            "-id",
             "--install_dir",
             type=str,
             default=None,
@@ -118,6 +126,7 @@ class Build:
         )
 
         parser.add_argument(
+            "-nj",
             "--ninja_jobs",
             type=int,
             default=None,
@@ -125,6 +134,7 @@ class Build:
         )
 
         parser.add_argument(
+            "-nt",
             "--ninja_target",
             type=str,
             default=None,
@@ -132,10 +142,11 @@ class Build:
         )
 
         parser.add_argument(
+            "-co",
             "--cmake_options",
             type=str,
             default=None,
-            help='cmake options, used to config repo self define options, like -DENABLE_ASAN=ON, as this build tools is for all cmake project, so we can not config all options, so provide this option for user to config self define options, WARN: use "ENABLE_ASAN=ON" instead of "-DENABLE_ASAN=ON", if you want to config more than one options, split by space, for example: "ENABLE_ASAN=ON ENABLE_TSAN=ON"',
+            help='cmake options, used to config repo self define options, like -DENABLE_HVX=ON, as this build tools is for all cmake project, so we can not config all options, so provide this option for user to config self define options, WARN: use "ENABLE_HVX=ON" instead of "-DENABLE_HVX=ON", if you want to config more than one options, split by space, for example: "ENABLE_HVX=ON ENABLE_TSAN=ON"',
         )
         parser.add_argument(
             "--ASAN",
@@ -154,6 +165,7 @@ class Build:
         )
 
         cross_build_p.add_argument(
+            "-cbo",
             "--cross_build_target_os",
             type=str,
             default="ANDROID",
@@ -161,6 +173,7 @@ class Build:
             help=f"cross build target os, now support: {self.cross_build_configs.keys()}",
         )
         cross_build_p.add_argument(
+            "-cba",
             "--cross_build_target_arch",
             type=str,
             default="aarch64",
@@ -169,6 +182,7 @@ class Build:
 
         host_build_p = sub_parser.add_parser("host_build", help="do host build,")
         host_build_p.add_argument(
+            "-b32",
             "--build_for_32bit",
             action="store_true",
             help="build for 32bit, default off, only support for host build",
@@ -556,8 +570,11 @@ class Build:
 
         # run config.sh
         os.chdir(args.build_dir)
+        time_s = time.time()
         logging.debug(f"run config.sh")
         subprocess.check_call(f"bash {args.build_dir}/config.sh", shell=True)
+        time_e = time.time()
+        logging.debug(f"build done, cost: {time_e - time_s:.2f}s")
 
 
 if __name__ == "__main__":
