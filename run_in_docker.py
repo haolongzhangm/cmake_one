@@ -6,6 +6,10 @@ import subprocess
 import sys
 
 
+def is_tty_supported():
+    return sys.stdin.isatty() and sys.stdout.isatty() and sys.stderr.isatty()
+
+
 def get_docker_tag_and_dockerfile() -> dict:
     cwd = os.path.dirname(os.path.abspath(__file__))
     DOCKER_INFO = {
@@ -53,6 +57,9 @@ def run_in_docker(cmd: str):
         docker_args = "-i"
     if "CI_SERVER_NAME" in envs and envs["CI_SERVER_NAME"] == "GitLab":
         logging.debug("run in GitLab, set docker_args to -i")
+        docker_args = "-i"
+    if not is_tty_supported():
+        logging.debug("tty is not supported, set docker_args to -i")
         docker_args = "-i"
 
     docker_cmd = f"docker run --rm {docker_args}"
