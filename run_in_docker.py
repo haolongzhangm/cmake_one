@@ -131,5 +131,13 @@ if __name__ == "__main__":
         os.path.dirname(os.path.abspath(__file__)), "cmake_one.py"
     )
     # pass all arguments to the cmake_one.py
-    cmd = f"python3 {cmake_one_py} {' '.join(sys.argv[1:])}"
+    def needs_quotes(arg):
+        return ' ' in arg
+
+    processed_args = [  
+        f'"{arg}"' if needs_quotes(arg) else arg
+        for arg in sys.argv[1:]
+    ]
+    # pass all arguments to the cmake_one.py
+    cmd = f"python3 {cmake_one_py} {' '.join(processed_args)}"
     run_in_docker(cmd)
