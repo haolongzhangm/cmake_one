@@ -27,7 +27,6 @@ python3 run_in_docker.py host_build
 - [x] (LINUX) cross android (aarch64,aarch32)
 - [x] (LINUX) cross OHOS (aarch64)
 - [x] (LINUX) cross LINUX(aarch64,aarch32,RISCV64-RVV,RISCV64-NO-RVV)
-- [ ] (LINUX) cross WINDOWS-X64-X86
-- [ ] (WINDOWS) host WINDOWS-X64-X86
+- [x] (LINUX) cross WINDOWS-X64-X86-AARCH64-AARCH32
 - [ ] (MACOS) host  WINDOWS-X64-AARCH64
 - [ ] (MACOS) cross IOS

@@ -69,7 +69,12 @@ def run_in_docker(cmd: str):
             value = envs[env]
             docker_cmd += f" -e {env}={env}"
     # this map is used to correct compile_commands.json for sysroot
-    map_to_envs_with_org_prefix = ["TEST_NOT_EXIT", "NDK_ROOT", "OHOS_NDK_ROOT"]
+    map_to_envs_with_org_prefix = [
+        "TEST_NOT_EXIT",
+        "NDK_ROOT",
+        "OHOS_NDK_ROOT",
+        "HEXAGON_SDK_ROOT_PATH",
+    ]
     for env in map_to_envs_with_org_prefix:
         if env in envs:
             value = envs[env]

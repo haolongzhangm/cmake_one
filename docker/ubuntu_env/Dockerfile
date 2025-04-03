@@ -77,5 +77,26 @@ RUN rm ${TOOLCHAIN_PATH}/android-ndk-r26c-linux.zip
 ENV ANDROID_NDK_HOME=${TOOLCHAIN_PATH}/android-ndk-r26c
 ENV NDK_ROOT=${TOOLCHAIN_PATH}/android-ndk-r26c
 
-# more env for python3
 RUN python3 -m pip install json5 wget numpy
+
+# hexagon-clang need libtinfo.so.5
+RUN ln -s /lib/x86_64-linux-gnu/libtinfo.so.6 /lib/x86_64-linux-gnu/libtinfo.so.5
+
+RUN apt-get install -y libmagic1
+RUN python3 -m pip install python-magic pyyaml tqdm
+
+# env for doxygen
+RUN apt-get update -y
+RUN apt-get install -y doxygen graphviz doxygen ghostscript
+
+# install windows build env
+RUN apt-get install -y wine msitools ca-certificates
+RUN git clone https://github.com/haolongzhangm/msvc-wine.git
+# 10.0.18362 compat for windows xp sp3
+ENV MSVC_WINE_VER=44dc13b5e62ecc2373fbe7e4727a525001f403f4
+ENV MSVC_SDK_DST=/opt/msvc
+RUN cd msvc-wine && git checkout ${MSVC_WINE_VER} &&\
+PYTHONUNBUFFERED=1 python3 ./vsdownload.py --accept-license \
+--dest ${MSVC_SDK_DST} --msvc-version 17.11 --sdk-version 10.0.22621 && \
+./install.sh ${MSVC_SDK_DST} && cp msvcenv-native.sh ${MSVC_SDK_DST}
+RUN apt install -y winbind

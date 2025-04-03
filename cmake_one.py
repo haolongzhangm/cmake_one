@@ -34,6 +34,7 @@ class Build:
         "LINUX": ["aarch64", "armv7-a", "rv64gcv", "rv64norvv"],
         "OHOS": ["aarch64"],
         "IOS": ["aarch64", "armv7-a"],
+        "WINDOWS": ["x86_64", "i386", "aarch64", "armv7-a"],
     }
 
     SUPPORT_ASAN_TYPES = ["ASAN", "HWASAN"]
@@ -54,6 +55,8 @@ class Build:
         "HWASAN": "-shared-libhwasan",
         None: "",
     }
+
+    msvcenv_native_config_cmd = ""
 
     def code_not_imp():
         raise CODE_NOT_IMP
@@ -352,6 +355,71 @@ class Build:
                     args.cross_build_target_arch in toolchains_maps
                 ), f"code issue happened, please add {args.cross_build_target_arch} to toolchains_maps if support"
                 self.toolchains_config = toolchains_maps[args.cross_build_target_arch]
+            elif args.cross_build_target_os == "WINDOWS":
+                assert (
+                    "MSVC_SDK_DST" in os.environ
+                ), "can not find MSVC_SDK_DST env, please check with docker/ubuntu_env/Dockerfile, if you do not use docker, please config MSVC_SDK_DST env"
+                # check MSVC_SDK_DST valid by check if exist msvcenv-native.sh
+                MSVC_SDK_DST = os.environ.get("MSVC_SDK_DST")
+                msvcenv_native = os.path.join(MSVC_SDK_DST, "msvcenv-native.sh")
+                assert os.path.isfile(
+                    msvcenv_native
+                ), f"error config env: MSVC_SDK_DST: {MSVC_SDK_DST}, can not find msvcenv-native.sh: {msvcenv_native}"
+
+                x86_64_windows = os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)),
+                    "toolchains/x86_64_windows.toolchain.cmake",
+                )
+                i386_windows = os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)),
+                    "toolchains/i386_windows.toolchain.cmake",
+                )
+                aarch64_windows = os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)),
+                    "toolchains/aarch64_windows.toolchain.cmake",
+                )
+                arm_windows = os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)),
+                    "toolchains/arm_windows.toolchain.cmake",
+                )
+                assert os.path.isfile(
+                    x86_64_windows
+                ), f"code issue happened, can not find x86_64-windows toolchains: {x86_64_windows}"
+                assert os.path.isfile(
+                    i386_windows
+                ), f"code issue happened, can not find i386_windows toolchains: {i386_windows}"
+                assert os.path.isfile(
+                    aarch64_windows
+                ), f"code issue happened, can not find aarch64_windows toolchains: {aarch64_windows}"
+                assert os.path.isfile(
+                    arm_windows
+                ), f"code issue happened, can not find arm_windows toolchains: {arm_windows}"
+
+                logging.debug(
+                    f"config for cross build WINDOWS-{args.cross_build_target_arch}"
+                )
+                toolchains_maps = {
+                    "x86_64": f"-DCMAKE_TOOLCHAIN_FILE={x86_64_windows}",
+                    "i386": f"-DCMAKE_TOOLCHAIN_FILE={i386_windows}",
+                    "aarch64": f"-DCMAKE_TOOLCHAIN_FILE={aarch64_windows}",
+                    "armv7-a": f"-DCMAKE_TOOLCHAIN_FILE={arm_windows}",
+                }
+                assert (
+                    args.cross_build_target_arch in toolchains_maps
+                ), f"code issue happened, please add {args.cross_build_target_arch} to toolchains_maps if support"
+                self.toolchains_config = toolchains_maps[args.cross_build_target_arch]
+                msvcenv_native_config_maps = {
+                    "x86_64": f'BIN={os.path.join(MSVC_SDK_DST, "bin", "x64")} . {msvcenv_native}',
+                    "i386": f'BIN={os.path.join(MSVC_SDK_DST, "bin", "x86")} . {msvcenv_native}',
+                    "aarch64": f'BIN={os.path.join(MSVC_SDK_DST, "bin", "arm64")} . {msvcenv_native}',
+                    "armv7-a": f'BIN={os.path.join(MSVC_SDK_DST, "bin", "arm")} . {msvcenv_native}',
+                }
+                assert (
+                    args.cross_build_target_arch in msvcenv_native_config_maps
+                ), f"code issue happened, please add {args.cross_build_target_arch} to msvcenv_native_config_maps if support"
+                self.msvcenv_native_config_cmd = msvcenv_native_config_maps[
+                    args.cross_build_target_arch
+                ]
             else:
                 logging.error(
                     f"code issue happened for: {args.cross_build_target_os} please FIXME!!!"
@@ -492,6 +560,7 @@ class Build:
         link_install_cmd = ""
         link_build_cmd = ""
         fix_compile_commands_cmd = ""
+        fix_hexagon_compile_commands_cmd = ""
         if not args.not_do_link_build_and_install:
             link_install_cmd = f"ln -snf {args.install_dir} {args.repo_dir}/install"
             link_build_cmd = f"ln -snf {args.build_dir} {args.repo_dir}/build"
@@ -551,17 +620,39 @@ class Build:
             fix_compile_commands_cmd = (
                 f"sed -i 's|{ohos_sysroot}|{host_ohos_sysroot}|g' compile_commands.json"
             )
+        # case three: build skel lib for hexagon, change $HEXAGON_SDK_ROOT_PATH to $CMAKE_ONE_PRFIX_HEXAGON_SDK_ROOT_PATH
+        if (
+            args.sub_command == "cross_build"
+            and args.cross_build_target_os == "ANDROID"
+            and "CMAKE_ONE_PRFIX_HEXAGON_SDK_ROOT_PATH" in envs
+        ):
+            assert (
+                "HEXAGON_SDK_ROOT_PATH" in os.environ
+            ), "can not find HEXAGON_SDK_ROOT_PATH env, please download from smb://release.hpc.mbg.megvii-inc.com/anonymous/ftp_data/hexagon_sdk then export it path to HEXAGON_SDK_ROOT_PATH"
+            hexagon_sdk_path = os.environ.get("HEXAGON_SDK_ROOT_PATH")
+            assert os.path.isdir(
+                hexagon_sdk_path
+            ), f"error config env: HEXAGON_SDK_ROOT_PATH: {hexagon_sdk_path}, can not find hexagon sdk path: {hexagon_sdk_path}"
+            host_hexagon_sdk_path = envs["CMAKE_ONE_PRFIX_HEXAGON_SDK_ROOT_PATH"]
+            logging.debug(f"change {hexagon_sdk_path} to {host_hexagon_sdk_path}")
+            logging.debug(f"fix compile_commands.json for Hexagon skel lib")
+            # replace hexagon_sdk_path to host_hexagon_sdk_path
+            fix_hexagon_compile_commands_cmd = f"sed -i 's|{hexagon_sdk_path}|{host_hexagon_sdk_path}|g' {args.repo_dir}/compile_commands.json"
+
         copy_cmd = f"mv compile_commands.json {args.repo_dir}"
 
         with open(os.path.join(args.build_dir, "config.sh"), "w") as f:
             f.write("#!/bin/bash\n")
             f.write("set -ex\n")
+            if self.msvcenv_native_config_cmd:
+                f.write(f"{self.msvcenv_native_config_cmd}\n")
             f.write(f"{config_cmd}\n")
             f.write(f"{fix_compile_commands_cmd}\n")
             f.write(f"{copy_cmd}\n")
             f.write(f"{build_cmd}\n")
             f.write(f"{link_install_cmd}\n")
             f.write(f"{link_build_cmd}\n")
+            f.write(f"{fix_hexagon_compile_commands_cmd}\n")
 
         # show config.sh
         logging.debug("show config.sh")
