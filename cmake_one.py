@@ -159,6 +159,13 @@ class Build:
             help=f"enable ASAN or HWASAN, now support: {self.SUPPORT_ASAN_TYPES}, default is None",
         )
 
+        parser.add_argument(
+            "-ncrc",
+            "--not_call_rerun_cmake",
+            action="store_true",
+            help="do not call rerun cmake, default off, if on, will not call cmake again, just run ninja, this is a fast build mode, do not worry about this option, as ninja will check if need to call cmake again",
+        )
+
         sub_parser = parser.add_subparsers(
             dest="sub_command", help="sub command for build", required=True
         )
@@ -641,14 +648,27 @@ class Build:
 
         copy_cmd = f"mv compile_commands.json {args.repo_dir}"
 
+        if args.not_call_rerun_cmake:
+            if not os.path.exists(os.path.join(args.build_dir, "CMakeCache.txt")):
+                args.not_call_rerun_cmake = False
+                logging.debug(
+                    f"need call rerun cmake, but CMakeCache.txt not exist, so call cmake again"
+                )
+            if not os.path.exists(os.path.join(args.build_dir, "build.ninja")):
+                args.not_call_rerun_cmake = False
+                logging.debug(
+                    f"need call rerun cmake, but build.ninja not exist, so call cmake again"
+                )
+
         with open(os.path.join(args.build_dir, "config.sh"), "w") as f:
             f.write("#!/bin/bash\n")
             f.write("set -ex\n")
             if self.msvcenv_native_config_cmd:
                 f.write(f"{self.msvcenv_native_config_cmd}\n")
-            f.write(f"{config_cmd}\n")
-            f.write(f"{fix_compile_commands_cmd}\n")
-            f.write(f"{copy_cmd}\n")
+            if not args.not_call_rerun_cmake:
+                f.write(f"{config_cmd}\n")
+                f.write(f"{fix_compile_commands_cmd}\n")
+                f.write(f"{copy_cmd}\n")
             f.write(f"{build_cmd}\n")
             f.write(f"{link_install_cmd}\n")
             f.write(f"{link_build_cmd}\n")
