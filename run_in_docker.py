@@ -87,6 +87,9 @@ def run_in_docker(cmd: str):
     docker_cmd += " -v /tmp:/tmp:rw"
     # map the current directory to docker
     docker_cmd += f" -v {os.getcwd()}:{os.getcwd()}:rw"
+    # map cmake_one to docker
+    cmake_one_path = os.path.dirname(os.path.abspath(__file__))
+    docker_cmd += f" -v {cmake_one_path}:{cmake_one_path}:rw"
 
     # split the cmd by space, then find --repo_dir xxx, --build_dir xxx, --install_dir xxx
     # then map the directory to docker

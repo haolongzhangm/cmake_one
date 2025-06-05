@@ -35,6 +35,8 @@ class Build:
         "OHOS": ["aarch64"],
         "IOS": ["aarch64", "armv7-a"],
         "WINDOWS": ["x86_64", "i386", "aarch64", "armv7-a"],
+        "QNX710": ["x86_64", "i386", "aarch64", "armv7-a"],
+        "QNX800": ["x86_64", "i386", "aarch64", "armv7-a"],
     }
 
     SUPPORT_ASAN_TYPES = ["ASAN", "HWASAN"]
@@ -57,6 +59,7 @@ class Build:
     }
 
     msvcenv_native_config_cmd = ""
+    qnx_native_config_cmd = ""
 
     def code_not_imp():
         raise CODE_NOT_IMP
@@ -74,7 +77,6 @@ class Build:
         self.detect_build_env()
         parser = argparse.ArgumentParser(description="build tools for cmake project")
         parser.add_argument(
-            "-bt",
             "--build_type",
             type=str,
             choices=["Release", "Debug"],
@@ -82,7 +84,6 @@ class Build:
             help="build type, default is Release",
         )
         parser.add_argument(
-            "-ro",
             "--remove_old_build",
             action="store_true",
             help="remove old build dir before build, default off",
@@ -93,19 +94,16 @@ class Build:
             help="do not link build and install dir to repo dir, default off",
         )
         parser.add_argument(
-            "-nv",
             "--build_with_ninja_verbose",
             action="store_true",
             help="ninja with verbose, default off",
         )
         parser.add_argument(
-            "-ne",
             "--build_with_ninja_explain",
             action="store_true",
             help="ninja with -d explain to show command reason, default off",
         )
         parser.add_argument(
-            "-rd",
             "--repo_dir",
             type=str,
             default=os.path.join(
@@ -114,14 +112,12 @@ class Build:
             help="repo dir, default is os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_repo'), you can specify it for build other repo",
         )
         parser.add_argument(
-            "-bd",
             "--build_dir",
             type=str,
             default=None,
             help="if not specify, will use repo_dir/build",
         )
         parser.add_argument(
-            "-id",
             "--install_dir",
             type=str,
             default=None,
@@ -129,7 +125,6 @@ class Build:
         )
 
         parser.add_argument(
-            "-nj",
             "--ninja_jobs",
             type=int,
             default=None,
@@ -137,7 +132,6 @@ class Build:
         )
 
         parser.add_argument(
-            "-nt",
             "--ninja_target",
             type=str,
             default=None,
@@ -145,7 +139,6 @@ class Build:
         )
 
         parser.add_argument(
-            "-co",
             "--cmake_options",
             type=str,
             default=None,
@@ -160,10 +153,16 @@ class Build:
         )
 
         parser.add_argument(
-            "-ncrc",
             "--not_call_rerun_cmake",
             action="store_true",
             help="do not call rerun cmake, default off, if on, will not call cmake again, just run ninja, this is a fast build mode, do not worry about this option, as ninja will check if need to call cmake again",
+        )
+
+        parser.add_argument(
+            "--cuda_arch",
+            type=str,
+            default=None,
+            help='Specify the CUDA architecture, e.g. "61;75" or "native", default is None. Currently supports host_build and cross_build with aarch64-linux.',
         )
 
         sub_parser = parser.add_subparsers(
@@ -175,7 +174,6 @@ class Build:
         )
 
         cross_build_p.add_argument(
-            "-cbo",
             "--cross_build_target_os",
             type=str,
             default="ANDROID",
@@ -183,21 +181,23 @@ class Build:
             help=f"cross build target os, now support: {self.cross_build_configs.keys()}",
         )
         cross_build_p.add_argument(
-            "-cba",
             "--cross_build_target_arch",
             type=str,
             default="aarch64",
             help=f"cross build target arch, now support: {self.cross_build_configs}",
         )
+        cross_build_p.add_argument(
+            "--force_clang",
+            action="store_true",
+            help="force use clang to build, default off. When cross_build with aarch64-linux, cmake_one will use gcc to build by default, if you want to use clang to build, please use this option",
+        )
 
         host_build_p = sub_parser.add_parser("host_build", help="do host build,")
         host_build_p.add_argument(
-            "-b32",
             "--build_for_32bit",
             action="store_true",
             help="build for 32bit, default off, only support for host build",
         )
-
         args = parser.parse_args()
 
         if args.ninja_jobs:
@@ -253,6 +253,19 @@ class Build:
                 args.cross_build_target_arch
                 in self.cross_build_configs[args.cross_build_target_os]
             ), f"error config: not support --cross_build_target_arch {args.cross_build_target_arch} now support one of: {self.cross_build_configs[args.cross_build_target_os]}"
+
+            # check cuda cross_build constraints
+            if args.cuda_arch:
+                assert (
+                    args.cross_build_target_os == "LINUX"
+                ), "Cross compile with CUDA currently only supports Linux"
+                assert (
+                    args.cross_build_target_arch == "aarch64"
+                ), "Cross compile with CUDA currently only supports aarch64"
+                assert (
+                    not args.force_clang
+                ), "Cross compile with CUDA currently only support aarch64-Linux with gcc build (remove --force_clang to use gcc)"
+
             if args.cross_build_target_os == "ANDROID":
                 assert (
                     "NDK_ROOT" in os.environ
@@ -315,10 +328,17 @@ class Build:
                 assert os.path.isfile(
                     ios_toolchains
                 ), f"code issue happened, can not find ios toolchains: {ios_toolchains}"
-                OS_PLATFORM = "OS"
-                XCODE_IOS_PLATFORM = "iphoneos"
+                OS_PLATFORM = (
+                    "OS64" if args.cross_build_target_arch == "aarch64" else "OS"
+                )
 
-                self.toolchains_config = f"-DCMAKE_TOOLCHAIN_FILE={ios_toolchains} -DIOS_TOOLCHAIN_ROOT={ios_toolchains} -DOS_PLATFORM={OS_PLATFORM} -DXCODE_IOS_PLATFORM={XCODE_IOS_PLATFORM} -DIOS_ARCH={IOS_ARCH_MAPS[args.cross_build_target_arch]} -DCMAKE_ASM_COMPILER=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -DCMAKE_MAKE_PROGRAM=ninja"
+                self.toolchains_config = (
+                    f"-DCMAKE_TOOLCHAIN_FILE={ios_toolchains} "
+                    f"-DIOS_TOOLCHAIN_ROOT={ios_toolchains} "
+                    f"-DIOS_ARCH={IOS_ARCH_MAPS[args.cross_build_target_arch]} "
+                    f"-DPLATFORM={OS_PLATFORM} "
+                    "-DCMAKE_MAKE_PROGRAM=ninja"
+                )
             elif args.cross_build_target_os == "LINUX":
                 rv64gcv_toolchains = os.path.join(
                     os.path.dirname(os.path.abspath(__file__)),
@@ -334,13 +354,6 @@ class Build:
                 assert os.path.isfile(
                     rv64norvv_toolchains
                 ), f"code issue happened, can not find rv64norvv toolchains: {rv64norvv_toolchains}"
-                aarch64_toolchains = os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)),
-                    "toolchains/aarch64-linux-gnu.toolchain.cmake",
-                )
-                assert os.path.isfile(
-                    aarch64_toolchains
-                ), f"code issue happened, can not find aarch64 toolchains: {aarch64_toolchains}"
                 armv7a_toolchains = os.path.join(
                     os.path.dirname(os.path.abspath(__file__)),
                     "toolchains/arm-linux-gnueabihf.toolchain.cmake",
@@ -352,12 +365,51 @@ class Build:
                 logging.debug(
                     f"config for cross build LINUX-{args.cross_build_target_arch}"
                 )
+
+                aarch64_linux_config = ""
+                if args.force_clang:
+                    logging.info("force use clang to build aarch64-linux")
+                    aarch64_toolchains = os.path.join(
+                        os.path.dirname(os.path.abspath(__file__)),
+                        "toolchains/aarch64-linux-gnu.toolchain.cmake",
+                    )
+                    assert os.path.isfile(
+                        aarch64_toolchains
+                    ), f"code issue happened, can not find aarch64 toolchains: {aarch64_toolchains}"
+                    aarch64_linux_config = (
+                        f"-DCMAKE_TOOLCHAIN_FILE={aarch64_toolchains}"
+                    )
+                else:
+                    aarch64_toolchains = os.path.join(
+                        os.path.dirname(os.path.abspath(__file__)),
+                        "toolchains/aarch64-linux-gcc-cuda.toolchain.cmake",
+                    )
+                    assert os.path.isfile(
+                        aarch64_toolchains
+                    ), f"code issue happened, can not find aarch64 gcc toolchains: {aarch64_toolchains}"
+                    config = f"-DCMAKE_TOOLCHAIN_FILE={aarch64_toolchains}"
+                    assert (
+                        "ARM_GNU_TOOLCHAIN_PATH" in os.environ
+                    ), "can not find ARM_GNU_TOOLCHAIN_PATH env, please download from https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads, then export it path to ARM_GNU_TOOLCHAIN_PATH"
+                    arm_gnu_toolchain_path = os.environ.get("ARM_GNU_TOOLCHAIN_PATH")
+                    config = (
+                        f'-DARM_GNU_TOOLCHAIN_PATH="{arm_gnu_toolchain_path}" {config}'
+                    )
+
+                    if args.cuda_arch:
+                        config = (
+                            f'-DCMAKE_CUDA_ARCHITECTURES="{args.cuda_arch}" {config}'
+                        )
+
+                    aarch64_linux_config = config
+
                 toolchains_maps = {
-                    "aarch64": f"-DCMAKE_TOOLCHAIN_FILE={aarch64_toolchains}",
+                    "aarch64": aarch64_linux_config,
                     "armv7-a": f"-DCMAKE_TOOLCHAIN_FILE={armv7a_toolchains}",
                     "rv64gcv": f"-DCMAKE_TOOLCHAIN_FILE={rv64gcv_toolchains}",
                     "rv64norvv": f"-DCMAKE_TOOLCHAIN_FILE={rv64norvv_toolchains}",
                 }
+
                 assert (
                     args.cross_build_target_arch in toolchains_maps
                 ), f"code issue happened, please add {args.cross_build_target_arch} to toolchains_maps if support"
@@ -427,6 +479,98 @@ class Build:
                 self.msvcenv_native_config_cmd = msvcenv_native_config_maps[
                     args.cross_build_target_arch
                 ]
+            elif (
+                args.cross_build_target_os == "QNX710"
+                or args.cross_build_target_os == "QNX800"
+            ):
+                QNX_SDP_ROOT = ""
+                QNX_SDP_LICENSE = ""
+                if args.cross_build_target_os == "QNX710":
+                    logging.debug("cross build for QNX710")
+                    assert (
+                        "QNX_SDP710_ROOT" in os.environ
+                    ), "can not find QNX_SDP710_ROOT env, please download from https://www.qnx.com/download/ then export it path to QNX_SDP710_ROOT"
+                    assert (
+                        "QNX_SDP710_L" in os.environ
+                    ), "can not find QNX_SDP710_L env, please export qnx license path to QNX_SDP710_L"
+                    QNX_SDP_ROOT = os.environ.get("QNX_SDP710_ROOT")
+                    QNX_SDP_LICENSE = os.environ.get("QNX_SDP710_L")
+                elif args.cross_build_target_os == "QNX800":
+                    logging.debug("cross build for QNX800")
+                    assert (
+                        "QNX_SDP800_ROOT" in os.environ
+                    ), "can not find QNX_SDP800_ROOT env, please download from https://www.qnx.com/download/ then export it path to QNX_SDP800_ROOT"
+                    assert (
+                        "QNX_SDP800_L" in os.environ
+                    ), "can not find QNX_SDP800_L env, please export qnx license path to QNX_SDP800_L"
+                    QNX_SDP_ROOT = os.environ.get("QNX_SDP800_ROOT")
+                    QNX_SDP_LICENSE = os.environ.get("QNX_SDP800_L")
+                else:
+                    logging.error(
+                        f"code issue happened for: {args.cross_build_target_os} please FIXME!!!"
+                    )
+                    code_not_imp()
+                license_source = os.path.join(QNX_SDP_LICENSE)
+                license_dst = os.path.join(os.path.expanduser("~"), ".qnx")
+                # remove old license
+                if os.path.exists(license_dst):
+                    logging.debug(f"remove old license: {license_dst}")
+                    shutil.rmtree(license_dst)
+                # copy license to home dir
+                logging.debug(f"copy license from {license_source} to {license_dst}")
+                shutil.copytree(license_source, license_dst)
+
+                qnxsdp_env = os.path.join(QNX_SDP_ROOT, "qnxsdp-env.sh")
+                assert os.path.isfile(
+                    qnxsdp_env
+                ), f"error config env: QNX_SDP_ROOT: {QNX_SDP_ROOT}, can not find qnxsdp-env.sh: {qnxsdp_env}"
+                # now export QNX_SDP_ROOT to env to toolchain config
+                os.environ["QNX_SDP_ROOT"] = QNX_SDP_ROOT
+                logging.debug(f"export QNX_SDP_ROOT: {QNX_SDP_ROOT} to env")
+
+                x86_64_qnx = os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)),
+                    "toolchains/x86_64_qnx.toolchain.cmake",
+                )
+                i386_qnx = os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)),
+                    "toolchains/i386_qnx.toolchain.cmake",
+                )
+                aarch64_qnx = os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)),
+                    "toolchains/aarch64_qnx.toolchain.cmake",
+                )
+                arm_qnx = os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)),
+                    "toolchains/arm_qnx.toolchain.cmake",
+                )
+                assert os.path.isfile(
+                    x86_64_qnx
+                ), f"code issue happened, can not find x86_64-qnx toolchains: {x86_64_qnx}"
+                assert os.path.isfile(
+                    i386_qnx
+                ), f"code issue happened, can not find i386_qnx toolchains: {i386_qnx}"
+                assert os.path.isfile(
+                    aarch64_qnx
+                ), f"code issue happened, can not find aarch64_qnx toolchains: {aarch64_qnx}"
+                assert os.path.isfile(
+                    arm_qnx
+                ), f"code issue happened, can not find arm_qnx toolchains: {arm_qnx}"
+
+                logging.debug(
+                    f"config for cross build QNX-{args.cross_build_target_arch}"
+                )
+                toolchains_maps = {
+                    "x86_64": f"-DCMAKE_TOOLCHAIN_FILE={x86_64_qnx}",
+                    "i386": f"-DCMAKE_TOOLCHAIN_FILE={i386_qnx}",
+                    "aarch64": f"-DCMAKE_TOOLCHAIN_FILE={aarch64_qnx}",
+                    "armv7-a": f"-DCMAKE_TOOLCHAIN_FILE={arm_qnx}",
+                }
+                assert (
+                    args.cross_build_target_arch in toolchains_maps
+                ), f"code issue happened, please add {args.cross_build_target_arch} to toolchains_maps if support"
+                self.toolchains_config = toolchains_maps[args.cross_build_target_arch]
+                self.qnx_native_config_cmd = f". {qnxsdp_env}"
             else:
                 logging.error(
                     f"code issue happened for: {args.cross_build_target_os} please FIXME!!!"
@@ -435,6 +579,13 @@ class Build:
 
         elif args.sub_command == "host_build":
             logging.debug("host build now")
+
+            # check host_build cuda constraints
+            if args.cuda_arch:
+                assert (
+                    self.BUILD_ENV == "Linux"
+                ), "do not support CUDA host build for non-Linux host"
+
             logging.debug("we are in host build now")
             if self.BUILD_ENV == "Windows":
                 # host build for Windows no need strip target
@@ -451,6 +602,8 @@ class Build:
                 self.toolchains_config = (
                     "-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
                 )
+                if args.cuda_arch:
+                    self.toolchains_config = f'-DCMAKE_CUDA_ARCHITECTURES="{args.cuda_arch}" {self.toolchains_config}'
             elif self.BUILD_ENV == "Darwin":
                 self.toolchains_config = (
                     "-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
@@ -635,7 +788,7 @@ class Build:
         ):
             assert (
                 "HEXAGON_SDK_ROOT_PATH" in os.environ
-            ), "can not find HEXAGON_SDK_ROOT_PATH env, please download from smb://release.hpc.mbg.megvii-inc.com/anonymous/ftp_data/hexagon_sdk then export it path to HEXAGON_SDK_ROOT_PATH"
+            ), "can not find HEXAGON_SDK_ROOT_PATH env, pls config HEXAGON_SDK_ROOT_PATH"
             hexagon_sdk_path = os.environ.get("HEXAGON_SDK_ROOT_PATH")
             assert os.path.isdir(
                 hexagon_sdk_path
@@ -665,6 +818,8 @@ class Build:
             f.write("set -ex\n")
             if self.msvcenv_native_config_cmd:
                 f.write(f"{self.msvcenv_native_config_cmd}\n")
+            if self.qnx_native_config_cmd:
+                f.write(f"{self.qnx_native_config_cmd}\n")
             if not args.not_call_rerun_cmake:
                 f.write(f"{config_cmd}\n")
                 f.write(f"{fix_compile_commands_cmd}\n")
